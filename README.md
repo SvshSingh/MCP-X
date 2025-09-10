@@ -153,14 +153,3 @@ TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
 3. Commit your changes.
 4. Open a Pull Request.
 
---- 
-
-## License
-
-This project is provided as-is for educational purposes.  
-Add your preferred license if you want to allow reuse.
-
---- 
-## Contact
-
-[![Connect on LinkedIn](https://img.shields.io/badge/Connect%20on%20LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sourav-singh-288930231/)
