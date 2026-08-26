@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@kernel/*": ["src/kernel/*"],
+      "@agents/*": ["src/agents/*"],
+      "@llm/*": ["src/llm/*"],
+      "@mcp/*": ["src/mcp/*"],
+      "@obs/*": ["src/observability/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "eval/**/*.ts", "*.config.ts", "eslint.config.js"]
+}
