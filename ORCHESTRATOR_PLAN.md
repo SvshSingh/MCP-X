@@ -272,19 +272,78 @@ ordering did not save it: the HN goal (48 chars) outranked the replan marker (40
 
 ---
 
-### Phase 7 — Evaluation harness (1–1.5 days) ⭐ **the JD gap — do not skip**
-- [ ] `eval/scenarios/*.json`: 12–15 golden scenarios — `{ goal, expectedTools[], expectedOutcome, maxSteps }`
-- [ ] `eval/runner.ts`: run every scenario N times (non-determinism!), collect results
-- [ ] `eval/metrics.ts`:
-  - **task completion rate** (did it finish?)
-  - **plan validity rate** (was the DAG well-formed first try?)
-  - **tool precision/recall** vs expected tools
-  - **step efficiency** (actual steps ÷ optimal steps)
-  - **variance across runs** ← the honest non-determinism metric
-- [ ] Markdown report written to `eval/report.md` with a pass/fail summary table
+### Phase 7 — Evaluation harness ✅ DONE
+- [x] `eval/scenarios/*.json`: **15** golden scenarios
+- [x] `eval/runner.ts`: runs every scenario N times, collects results
+- [x] `eval/metrics.ts`: completion rate, plan validity rate, capability precision/recall,
+      step efficiency, cross-run variance
+- [x] Markdown report written to `eval/report.md` with a pass/fail summary table
 
 **Done when:** `npm run eval` produces a report showing per-scenario pass rate across 3
-repeated runs, and flags any scenario whose behaviour varies between runs.
+repeated runs, and flags any scenario whose behaviour varies between runs. ✅
+*388 tests, 98.7% statements. Suite result: **14/15 scenarios pass.***
+
+**Deviation: capabilities, not tools.** The plan specified `expectedTools[]`. Tool execution is
+still stubbed, so scoring tool calls would measure the stub rather than the system. What the
+system genuinely decides is *which specialist each task is routed to*, so scenarios declare
+`expectedCapabilities` and precision/recall are scored on those. Tool-level scoring becomes
+meaningful once agents really invoke tools.
+
+**Golden fixtures are recorded model output, not hand-written JSON.** A set I invented would
+test the harness against my idea of what the planner does — the exact thing the harness exists
+to find out. `npm run eval:record` captures real completions. Five were recorded against
+`gemini-3.6-flash` and ten against `gemini-3.1-flash-lite`, because the first model's daily
+quota ran out mid-recording.
+
+**Variance is reported as unmeasurable under fixture replay.** Every repeat is identical by
+construction there, so a stability figure would be an artefact of the replay. The report says
+so explicitly rather than printing a flattering "0 unstable". Live mode measures it for real.
+
+**Precision is a gate, not just a number.** Recall alone asks "did it do everything the goal
+needs", which a padded plan passes trivially.
+
+---
+
+## The harness's first real finding
+
+`add-two-numbers` fails, and the cause is a defect in **our own planner prompt**, not the model.
+
+For the goal *"add 2 and 3 and tell me the answer"* the planner emits three tasks:
+
+```
+extract_operands [research]: Extract the numerical operands 2 and 3 from the prompt.
+calculate_sum    [compute]:  Add the numbers 2 and 3 together to obtain the sum.
+report_result    [publish]:  Format and deliver the calculated sum to the user.
+```
+
+Capability precision 50%, step efficiency 0.33. The root cause is line 45 of
+`src/kernel/planner.ts`:
+
+> `- Prefer 3 to 8 tasks.`
+
+The model is obeying instructions, inventing a `research` step to reach the floor of three. The
+same failure reproduces under both `gemini-3.6-flash` (recorded) and `gemini-3.1-flash-lite`
+(live), which is what rules out the model and implicates the prompt.
+
+**Left unfixed deliberately, for now.** Changing the prompt invalidates all 15 recorded
+fixtures, and re-recording needs quota that is exhausted for today. The fix is to replace the
+floor with "use as few tasks as the goal genuinely needs", then re-record. Tracked as the first
+item for Phase 8.
+
+## Free-tier quota is the binding constraint on live evaluation
+
+`generativelanguage.googleapis.com/generate_content_free_tier_requests` is capped at **20
+requests per day, per model**. A full live suite (15 scenarios × 3 repeats) is 45 planning
+calls before any routing, so it cannot run on the free tier. Consequences:
+
+- Fixture replay is the default and is what CI runs.
+- Live mode defaults to *keyword* routing; LLM routing costs a call per task and would multiply
+  the suite into the hundreds of calls. `EVAL_ROUTING=llm` opts in.
+- `EVAL_ONLY=id1,id2` restricts the suite, which is how the live variance check above was run
+  within quota.
+
+This also exposed a real bug: the retry loop treated the quota 429 as retryable and burned three
+attempts on an error no backoff could clear. `isDailyQuotaExhausted` now fails it fast.
 
 ---
 
