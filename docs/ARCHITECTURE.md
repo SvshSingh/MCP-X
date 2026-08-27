@@ -42,20 +42,30 @@ User goal (natural language)
 | Module | Responsibility | Phase | Status |
 |---|---|---|---|
 | `src/kernel/schemas.ts` | Zod contracts: `Task`, `Plan`, `AgentResult`, `Event`, `RunRecord` | 1 | **built** |
-| `src/kernel/planner.ts` | goal → validated `Plan`, with schema-error retry loop | 2 | pending |
+| `src/kernel/json.ts` | recovers JSON from imperfect model output | 2 | **built** |
+| `src/kernel/planner.ts` | goal → validated `Plan`, with schema-error retry loop | 2 | **built** |
+| `src/llm/` | `LlmClient` interface, Gemini client with retry + token accounting, fixture client | 2 | **built** |
+| `src/mcp/` | MCP server over SSE + tool registry | 2 | **built** |
+| `src/cli/plan.ts` | plan a goal from the command line | 2 | **built** |
 | `src/kernel/scheduler.ts` | topological readiness + parallel dispatch | 3 | pending |
 | `src/kernel/orchestrator.ts` | execution loop, retry and failure policy | 3 | pending |
 | `src/kernel/blackboard.ts` | append-only event log + derived state snapshot | 3 | pending |
 | `src/kernel/classifier.ts` | task → specialist routing | 4 | pending |
-| `src/kernel/replanner.ts` | bounded adaptive replanning | 6 | pending |
 | `src/agents/registry.ts` | agent → capability/tool manifest | 4 | pending |
-| `src/mcp/` | MCP server + tool definitions (ported from `server/`) | 2 | pending |
-| `src/llm/` | Gemini client, retry, token accounting (ported from `client/`) | 2 | pending |
+| `src/kernel/replanner.ts` | bounded adaptive replanning | 6 | pending |
 | `src/observability/` | `RunRecord` persistence (JSONL) + cost accounting | 5 | pending |
 | `eval/` | golden scenarios, scoring, variance report | 7 | pending |
 
-`client/` and `server/` still hold the original plain-JS demo. They stay
-runnable and untouched until Phase 2 ports them into `src/llm/` and `src/mcp/`.
+`client/` and `server/` still hold the original plain-JS demo, kept as a
+reference against the port. `src/llm/` and `src/mcp/` supersede them.
+
+## Running it
+
+```bash
+npm run plan -- "post a summary of today's top HN story to Twitter"   # needs GEMINI_API_KEY
+PLANNER_MODE=fixture npm run plan -- "restock the warehouse for next week"
+npm run serve                                                         # MCP server on :3001
+```
 
 ## Design decisions
 
@@ -88,6 +98,32 @@ consumer that has not handled it — at compile time rather than at replay time.
 **Tokens are tracked in and out separately.** Input and output tokens bill at
 different rates; a single scalar total cannot produce a correct cost. This is a
 deliberate deviation from the one-field `totalTokens` in the original plan.
+
+**The kernel depends on an `LlmClient` interface, never on a vendor SDK.**
+Beyond the usual portability argument: planning is the least deterministic part
+of the system, so tests asserting *plan shape* must not also be testing whether
+Gemini felt cooperative. `PLANNER_MODE=fixture` replays recorded completions,
+which is why CI needs no API key and a red planner test always means the
+parsing or retry logic broke.
+
+**The planner assumes the model will be wrong.** It asks for JSON, validates
+against `Plan`, and on failure hands the *specific* validation errors back and
+asks again, capped at three attempts. The repair prompt restates what the model
+produced and what was wrong with it, because a bare "that was invalid, try
+again" tends to reproduce the same output. Attempts and their token costs are
+retained even on failure — a failed planning run still cost money and the
+record must show it.
+
+**JSON extraction degrades through three strategies** — direct parse, fence
+stripping, then a balanced-brace scan that tracks string literals. Even asked
+for `application/json`, a model will occasionally prepend "Sure! Here you go:",
+and burning a retry on that would be waste.
+
+**Tools are declared as data, not as registration side effects.** The original
+server called `server.tool(...)` inline at startup, which means the tool set
+exists only inside a running server. Phase 4 has to partition tools across
+specialists, so `tools.ts` exports a registry with a `capability` on each entry
+— the seam the classifier routes on.
 
 **Plan revisions are append-only.** A replan appends a revision rather than
 mutating the last one, so the run record shows what changed and why.

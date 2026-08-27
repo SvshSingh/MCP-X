@@ -125,15 +125,25 @@ bill at different rates, so a single total cannot produce a correct cost in Phas
 
 ---
 
-### Phase 2 — Planner (1 day)
-- [ ] Port `client/index.js` → `src/llm/` (Gemini client, retry, token accounting) and
+### Phase 2 — Planner ✅ DONE
+- [x] Port `client/index.js` → `src/llm/` (Gemini client, retry, token accounting) and
       `server/` → `src/mcp/`, converting both to TypeScript
-- [ ] Prompt Gemini to emit a task DAG as JSON; parse with the `Plan` schema
-- [ ] Retry-on-invalid-schema loop (max 3), feeding the validation error back to the model
-- [ ] Deterministic fixture mode (`PLANNER_MODE=fixture`) so tests never call the API
+- [x] Prompt Gemini to emit a task DAG as JSON; parse with the `Plan` schema
+- [x] Retry-on-invalid-schema loop (max 3), feeding the validation error back to the model
+- [x] Deterministic fixture mode (`PLANNER_MODE=fixture`) so tests never call the API
 
 **Done when:** given "post a summary of today's top HN story to Twitter", the planner emits ≥3
-tasks with correct dependencies. Tested against fixtures.
+tasks with correct dependencies. Tested against fixtures. ✅
+*Emits 6 tasks including a parallel branch. 146 tests, 98% statements / 92% branches.*
+
+**Notes:**
+- `@google/genai` upgraded from `^0.7.0` to `2.19.0`; the response shape changed, and the
+  client now uses native JSON mode (`responseMimeType`) rather than scraping fenced blocks.
+- Two defects were found and fixed by the new tests: `isRetryable` ignored `LlmError.retryable`
+  so retryable empty completions never retried, and `FixtureLlmClient.generate` threw
+  synchronously instead of rejecting.
+- `createPost` no longer builds a Twitter client at import time. Missing credentials are
+  reported as a normal tool error the orchestrator can route around.
 
 ---
 
