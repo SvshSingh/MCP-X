@@ -37,8 +37,14 @@ export type AgentRunner = (
   context: { attempt: number; agent: string; state: RunState },
 ) => Promise<AgentResultInput> | AgentResultInput;
 
-/** Chooses the specialist for a task. Phase 4 replaces this with the classifier. */
-export type Classifier = (task: Task) => string;
+/**
+ * Chooses the specialist for a task.
+ *
+ * Allowed to be async: keyword routing is synchronous, but an LLM classifier
+ * is not, and Phase 6's replanning can introduce tasks mid-run that have never
+ * been routed. Pre-classifying the whole plan up front would not cover that.
+ */
+export type Classifier = (task: Task) => string | Promise<string>;
 
 export const defaultClassifier: Classifier = (task) => task.agentHint ?? "default";
 
@@ -112,13 +118,26 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
       break;
     }
 
+    // Route the wave first. Classification may be async and may itself call a
+    // model, so it happens concurrently rather than task by task.
+    const routed = await Promise.all(
+      wave.map(async (task) => ({
+        task,
+        attempt: taskState(state, task.id).attempts + 1,
+        agent: await classify(task),
+      })),
+    );
+
     // Mark the whole wave started before any of it runs, so the log shows what
     // was dispatched together rather than implying a sequence.
-    const dispatched = wave.map((task) => {
-      const attempt = taskState(state, task.id).attempts + 1;
-      const agent = classify(task);
-      emit({ type: "task_started", taskId: task.id, agent, attempt });
-      return { task, attempt, agent };
+    const dispatched = routed.map((entry) => {
+      emit({
+        type: "task_started",
+        taskId: entry.task.id,
+        agent: entry.agent,
+        attempt: entry.attempt,
+      });
+      return entry;
     });
 
     // allSettled, not all: one task failing must not abandon its siblings,

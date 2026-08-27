@@ -9,7 +9,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "json-summary"],
-      include: ["src/kernel/**/*.ts", "src/llm/**/*.ts", "src/mcp/tools.ts"],
+      include: [
+        "src/kernel/**/*.ts",
+        "src/llm/**/*.ts",
+        "src/agents/**/*.ts",
+        "src/mcp/tools.ts",
+      ],
       exclude: [
         // Entry points: side-effectful bootstraps with no logic worth asserting.
         // Their behaviour is covered through the modules they wire together.

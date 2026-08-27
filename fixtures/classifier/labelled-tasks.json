@@ -1,0 +1,105 @@
+[
+  {
+    "id": "fetch_top_story",
+    "description": "Fetch the current top story from the Hacker News front page.",
+    "expected": "research"
+  },
+  {
+    "id": "read_article",
+    "description": "Read the linked article and extract its main text.",
+    "expected": "research"
+  },
+  {
+    "id": "search_docs",
+    "description": "Search the internal documentation for the deployment runbook.",
+    "expected": "research"
+  },
+  {
+    "id": "check_inventory",
+    "description": "Check current stock levels for each SKU in the warehouse.",
+    "expected": "research"
+  },
+  {
+    "id": "lookup_supplier",
+    "description": "Look up the supplier contact details for part number A-42.",
+    "expected": "research"
+  },
+  {
+    "id": "download_report",
+    "description": "Download last quarter's sales report from the finance portal.",
+    "expected": "research"
+  },
+  {
+    "id": "extract_publish_date",
+    "description": "Extract the publish date from the article metadata.",
+    "expected": "research",
+    "note": "Adversarial: contains the word 'publish' but only reads data."
+  },
+  {
+    "id": "sum_numbers",
+    "description": "Add the two provided numbers together.",
+    "expected": "compute"
+  },
+  {
+    "id": "summarise_article",
+    "description": "Summarise the article into three bullet points.",
+    "expected": "compute"
+  },
+  {
+    "id": "compose_tweet",
+    "description": "Condense the summary into a single tweet under 280 characters.",
+    "expected": "compute",
+    "note": "Mentions 'tweet' but only drafts it; publishing is a separate task."
+  },
+  {
+    "id": "compute_reorder",
+    "description": "Compute reorder quantities from stock levels and thresholds.",
+    "expected": "compute"
+  },
+  {
+    "id": "rank_candidates",
+    "description": "Rank the candidate suppliers by lead time and price.",
+    "expected": "compute"
+  },
+  {
+    "id": "validate_compliance",
+    "description": "Validate the shipment records against compliance rules.",
+    "expected": "compute"
+  },
+  {
+    "id": "post_process_results",
+    "description": "Post-process the raw scrape results into clean records.",
+    "expected": "compute",
+    "note": "Adversarial: 'post-process' is not posting, and 'scrape' is not research here."
+  },
+  {
+    "id": "post_tweet",
+    "description": "Post the composed tweet to Twitter.",
+    "expected": "publish"
+  },
+  {
+    "id": "notify_supplier",
+    "description": "Notify the supplier that a replenishment order has been placed.",
+    "expected": "publish"
+  },
+  {
+    "id": "send_email",
+    "description": "Send the summary by email to the operations team.",
+    "expected": "publish"
+  },
+  {
+    "id": "publish_changelog",
+    "description": "Publish the release changelog to the public site.",
+    "expected": "publish"
+  },
+  {
+    "id": "upload_artifact",
+    "description": "Upload the build artifact to the release bucket.",
+    "expected": "publish"
+  },
+  {
+    "id": "announce_launch",
+    "description": "Announce the launch in the team chat channel.",
+    "expected": "publish"
+  }
+]
