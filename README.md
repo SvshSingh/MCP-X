@@ -372,4 +372,4 @@ Tracked in detail in [`ORCHESTRATOR_PLAN.md`](ORCHESTRATOR_PLAN.md):
 
 This began as a minimal MCP server-and-client demo — one `addTwoNumbers` tool, one `createPost`
 tool, one Gemini chat loop. That code is still readable in the git history; every module above
-was built by porting, testing, and then deliberately outgrowing it.
+was built by porting, testing, and then deliberately outgrowing it. Basically it started from a little fun and now I'm having more of it.
