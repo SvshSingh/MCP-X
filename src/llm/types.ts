@@ -25,7 +25,7 @@ export interface LlmResponse {
 }
 
 export interface LlmClient {
-  /** Identifies the provider in run records, e.g. "gemini-2.0-flash" or "fixture". */
+  /** Identifies the provider in run records, e.g. "gemini-3.6-flash" or "fixture". */
   readonly name: string;
   generate(request: LlmRequest): Promise<LlmResponse>;
 }
