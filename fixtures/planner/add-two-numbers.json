@@ -1,0 +1,6 @@
+{
+  "goal": "add 2 and 3 and tell me the answer",
+  "response": "Sure! Here is the plan:\n\n```json\n{\n  \"tasks\": [\n    {\n      \"id\": \"add_numbers\",\n      \"description\": \"Add the two provided numbers together.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"report_result\",\n      \"description\": \"Report the computed sum back to the user.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"add_numbers\"\n      ]\n    }\n  ]\n}\n```\n",
+  "tokensIn": 300,
+  "tokensOut": 95
+}
