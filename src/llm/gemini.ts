@@ -12,7 +12,15 @@ import { GoogleGenAI } from "@google/genai";
 
 import { LlmError, type LlmClient, type LlmRequest, type LlmResponse } from "./types.js";
 
-export const DEFAULT_MODEL = "gemini-2.0-flash";
+/**
+ * Pinned deliberately rather than using a `-latest` alias.
+ *
+ * Phase 7 measures cross-run variance to characterise non-determinism, and an
+ * alias that silently swaps the model underneath would corrupt exactly that
+ * measurement. The cost of pinning is that models retire: `gemini-2.0-flash`,
+ * inherited from the original client, was withdrawn and returned 404.
+ */
+export const DEFAULT_MODEL = "gemini-3.6-flash";
 
 /** Statuses worth retrying: rate limits, and the server-side 5xx family. */
 const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
@@ -96,8 +104,14 @@ export class GeminiClient implements LlmClient {
 
   async generate(request: LlmRequest): Promise<LlmResponse> {
     let lastError: unknown;
+    // Counted rather than assumed: a non-retryable failure stops after one
+    // call, and reporting the cap instead would claim retries that never
+    // happened - which sends you hunting for a retry bug that isn't there.
+    let used = 0;
 
     for (let attempt = 1; attempt <= this.#maxAttempts; attempt++) {
+      used = attempt;
+
       try {
         return await this.#callOnce(request);
       } catch (error) {
@@ -112,12 +126,12 @@ export class GeminiClient implements LlmClient {
 
     const status = statusOf(lastError);
     throw new LlmError(
-      `Gemini request failed after ${this.#maxAttempts} attempt(s): ${
+      `Gemini request failed after ${used} attempt(s): ${
         lastError instanceof Error ? lastError.message : String(lastError)
       }`,
       {
         retryable: isRetryable(lastError),
-        attempts: this.#maxAttempts,
+        attempts: used,
         cause: lastError,
         ...(status === undefined ? {} : { status }),
       },
