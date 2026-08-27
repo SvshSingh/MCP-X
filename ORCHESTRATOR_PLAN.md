@@ -147,14 +147,34 @@ tasks with correct dependencies. Tested against fixtures. ✅
 
 ---
 
-### Phase 3 — Scheduler + Orchestrator (1–1.5 days)
-- [ ] `scheduler.ts`: return all tasks whose `dependsOn` are complete → parallel dispatch via `Promise.allSettled`
-- [ ] `orchestrator.ts`: loop until all tasks terminal; write every transition to the blackboard
-- [ ] Failure policy: retry `n` times → mark failed → mark dependents blocked
-- [ ] `blackboard.ts`: append-only event log + derived state snapshot
+### Phase 3 — Scheduler + Orchestrator ✅ DONE
+- [x] `scheduler.ts`: return all tasks whose `dependsOn` are complete → parallel dispatch via `Promise.allSettled`
+- [x] `orchestrator.ts`: loop until all tasks terminal; write every transition to the blackboard
+- [x] Failure policy: retry `n` times → mark failed → mark dependents blocked
+- [x] `blackboard.ts`: append-only event log + derived state snapshot
 
 **Done when:** a 5-task plan with 2 parallel branches executes in correct order with stubbed
-agents; a forced mid-plan failure blocks only the dependent subtree.
+agents; a forced mid-plan failure blocks only the dependent subtree. ✅
+*217 tests, 97.8% statements / 91.4% branches.*
+
+**Key decision — state is derived, never stored.** The event log is the only writable thing;
+task status, attempt counts and token totals are recomputed by `deriveState` on every loop
+iteration. That costs a cheap replay per wave and buys the guarantee that what the orchestrator
+believes and what the record says cannot diverge. Phase 5's replay is not a second
+implementation — it is this same function applied to events read off disk.
+
+**`blocked` is computed, not recorded.** There is no `task_blocked` event. A task is blocked
+when any dependency failed terminally or is itself blocked, resolved by a fixpoint pass so a
+failure three levels up still blocks the entire subtree beneath it.
+
+**Added `npm run execute`** to demonstrate the loop end-to-end against a planner-generated DAG.
+`FAIL_TASK=<id>` forces a failure so the blocked-subtree policy is visible without breaking a
+real tool.
+
+**Note:** `AgentRunner` returns the *input* shape of `AgentResult`, not the parsed one. The
+orchestrator parses every result anyway, and requiring agents to spell out `toolCalls: []` and
+zeroed token counts just to report success was friction with no benefit. Caught by typecheck
+while the tests were already passing.
 
 ---
 
