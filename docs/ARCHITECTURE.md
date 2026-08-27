@@ -51,8 +51,8 @@ User goal (natural language)
 | `src/kernel/scheduler.ts` | topological readiness + parallel dispatch | 3 | **built** |
 | `src/kernel/orchestrator.ts` | execution loop, retry and failure policy | 3 | **built** |
 | `src/cli/run.ts` | plan then execute, with stubbed agents | 3 | **built** |
-| `src/kernel/classifier.ts` | task → specialist routing | 4 | pending |
-| `src/agents/registry.ts` | agent → capability/tool manifest | 4 | pending |
+| `src/agents/registry.ts` | agent manifest + enforced tool ownership | 4 | **built** |
+| `src/kernel/classifier.ts` | task → specialist routing | 4 | **built** |
 | `src/kernel/replanner.ts` | bounded adaptive replanning | 6 | pending |
 | `src/observability/` | `RunRecord` persistence (JSONL) + cost accounting | 5 | pending |
 | `eval/` | golden scenarios, scoring, variance report | 7 | pending |
@@ -153,6 +153,22 @@ work remains, it throws. With a validated DAG and correct blocking that is
 unreachable — but the alternative failure mode is a process that hangs
 silently, which is far worse to diagnose than an explicit error naming the
 stuck tasks.
+
+**Tool ownership is enforced, not documented.** `SpecialistAgent.invoke`
+throws when asked for a tool its definition does not declare, and a test
+asserts every tool has exactly one owner. Without enforcement, "specialists"
+would be a naming convention, and the reason to split them at all — that a
+publish action cannot originate from a context meant only to read — would rest
+on nothing.
+
+**Routing degrades rather than fails.** The classifier prefers a planner hint
+naming a registered agent, then an LLM answer, then deterministic keyword
+scoring. An LLM answer naming an agent that does not exist is discarded rather
+than trusted: a classifier that can invent a destination is worse than one
+that is occasionally wrong, because the orchestrator would dispatch into
+nothing. The keyword path is not only an outage fallback — it is what makes
+routing accuracy measurable with no network, so a routing regression shows up
+as a number rather than a vague sense that the agent got worse.
 
 **Plan revisions are append-only.** A replan appends a revision rather than
 mutating the last one, so the run record shows what changed and why.

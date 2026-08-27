@@ -13,8 +13,10 @@
  * without breaking a real tool.
  */
 
+import { buildSpecialists, defaultRegistry } from "../agents/registry.js";
 import { createLlmClient } from "../llm/index.js";
-import { LlmError } from "../llm/types.js";
+import { LlmError, type LlmClient } from "../llm/types.js";
+import { classifyTask } from "../kernel/classifier.js";
 import { createPlan, PlannerError } from "../kernel/planner.js";
 import { blockedByFailures, runPlan, type AgentRunner } from "../kernel/orchestrator.js";
 import { executionWaves } from "../kernel/scheduler.js";
@@ -28,8 +30,16 @@ const STATUS_MARK: Record<string, string> = {
   running: "RUN ",
 };
 
-/** Simulated work. Deterministic, with an opt-in forced failure. */
-function stubRunner(failTask: string | undefined): AgentRunner {
+/**
+ * Simulated work, dispatched through the real specialist wrappers.
+ *
+ * Tool selection is still stubbed — what is real here is the ownership
+ * boundary: a task routed to `compute` is handed a specialist that physically
+ * cannot reach `createPost`.
+ */
+function specialistRunner(failTask: string | undefined): AgentRunner {
+  const specialists = buildSpecialists();
+
   return async (task, ctx) => {
     await new Promise((resolve) => setTimeout(resolve, 40));
 
@@ -37,10 +47,13 @@ function stubRunner(failTask: string | undefined): AgentRunner {
       return { taskId: task.id, ok: false, error: `simulated failure in ${task.id}` };
     }
 
+    const specialist = specialists.get(ctx.agent);
+    const tools = specialist?.toolNames ?? [];
+
     return {
       taskId: task.id,
       ok: true,
-      output: `[${ctx.agent}] ${task.description}`,
+      output: `[${ctx.agent}${tools.length > 0 ? ` -> ${tools.join(",")}` : ""}] ${task.description}`,
       tokensIn: 40,
       tokensOut: 25,
     };
@@ -90,10 +103,21 @@ async function main(): Promise<number> {
   const failTask = process.env["FAIL_TASK"];
   if (failTask !== undefined) console.log(`Forcing failure in: ${failTask}\n`);
 
+  // Routing uses the model when one is available, and falls back to
+  // deterministic keyword scoring otherwise. `ROUTE=keyword` forces the
+  // deterministic path even when a key is present.
+  const registry = defaultRegistry();
+  const routeWith: LlmClient | undefined =
+    process.env["ROUTE"] === "keyword" || llm.name === "fixture" ? undefined : llm;
+
   const started = Date.now();
   const outcome = await runPlan({
     plan,
-    execute: stubRunner(failTask),
+    execute: specialistRunner(failTask),
+    classify: async (task) => {
+      const decision = await classifyTask(task, { registry, ...(routeWith ? { llm: routeWith } : {}), useHint: false });
+      return decision.agent;
+    },
     onEvent: (event) => {
       const e = event as { type: string; taskId?: string; agent?: string; attempt?: number };
       if (e.type === "task_started") {

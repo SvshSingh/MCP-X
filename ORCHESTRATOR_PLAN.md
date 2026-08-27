@@ -178,13 +178,35 @@ while the tests were already passing.
 
 ---
 
-### Phase 4 — Classifier + specialist agents (1 day)
-- [ ] `registry.ts`: each agent declares `{ name, description, tools[] }`
-- [ ] `classifier.ts`: given a `Task` + registry, pick the agent (LLM-based, with a keyword fallback for determinism in tests)
-- [ ] Refactor MCP-X tools into ≥3 specialists (e.g. `research`, `compute`, `publish`)
+### Phase 4 — Classifier + specialist agents ✅ DONE
+- [x] `registry.ts`: each agent declares `{ name, description, capability, tools[], keywords[] }`
+- [x] `classifier.ts`: given a `Task` + registry, pick the agent (LLM-based, with a keyword fallback for determinism in tests)
+- [x] Refactor MCP-X tools into 3 specialists: `research`, `compute`, `publish`
 
 **Done when:** each task routes to the right specialist; classifier accuracy measured on a
-fixed set of 20 labelled tasks.
+fixed set of 20 labelled tasks. ✅
+*Keyword classifier: **18/20 = 90%** (research 6/7, compute 6/7, publish 6/6). 267 tests,
+98.3% statements / 91.9% branches.*
+
+**The labelled set is deliberately adversarial.** Two of the twenty have surface vocabulary
+pointing the wrong way — `extract_publish_date` (reads data, contains "publish") and
+`post_process_results` ("post-process" is not posting). Both are the misroutes. Without them
+the score would be a tautology: keywords I wrote, graded against tasks I wrote. A test asserts
+*which* two fail, so "fixing" them by over-fitting keywords has to edit that expectation
+explicitly.
+
+**Ownership is enforced, not documented.** `SpecialistAgent.invoke` throws if asked for a tool
+the agent does not declare. Without that, "specialists" would be a naming convention and a
+read-only context could still reach a side-effecting tool. A test asserts every tool has
+exactly one owner and that no non-publish agent holds a publish tool.
+
+**An LLM answer naming an unregistered agent is discarded**, and keyword routing stands in. A
+classifier that can invent a destination is worse than one that is occasionally wrong, because
+the orchestrator would dispatch into nothing.
+
+**`Classifier` is now allowed to be async.** Keyword routing is synchronous but LLM routing is
+not, and Phase 6's replanning can introduce tasks mid-run that have never been routed —
+pre-classifying the plan up front would not cover that.
 
 ---
 
@@ -299,6 +321,14 @@ than estimate from a fixed rate.
 demanding than observed reality. The "exposes a parallel branch" test therefore
 validates the scheduler's requirement, not the planner's behaviour. Phase 7
 should measure how often real plans contain exploitable parallelism.
+
+> **Revised in Phase 4.** This does not generalise. The goal *"check warehouse
+> stock, work out reorder amounts, and notify the supplier"* produced a genuine
+> parallel branch on the first live attempt (`fetch_inventory_data` and
+> `fetch_reorder_rules` in one wave). Whether a plan contains exploitable
+> parallelism appears to depend on the goal, not on a general preference of the
+> model for chains — which makes it a per-scenario metric in Phase 7, not a
+> single global rate.
 
 **Models retire without warning.** `gemini-2.0-flash` and `gemini-2.5-flash`
 both 404 for new users as of this date. Pinning is still correct (an alias
