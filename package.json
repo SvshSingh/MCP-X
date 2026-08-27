@@ -12,13 +12,21 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "serve": "tsx src/mcp/main.ts",
+    "plan": "tsx src/cli/plan.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.19.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "twitter-api-v2": "^1.29.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.10.7",
     "@vitest/coverage-v8": "^3.0.4",
     "eslint": "^9.18.0",

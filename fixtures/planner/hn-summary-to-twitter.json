@@ -1,0 +1,6 @@
+{
+  "goal": "post a summary of today's top HN story to Twitter",
+  "response": "{\"tasks\":[{\"id\":\"fetch_top_story\",\"description\":\"Fetch the current top story from the Hacker News front page.\",\"agentHint\":\"research\",\"dependsOn\":[]},{\"id\":\"fetch_story_content\",\"description\":\"Retrieve the linked article's text for the top story.\",\"agentHint\":\"research\",\"dependsOn\":[\"fetch_top_story\"]},{\"id\":\"fetch_story_comments\",\"description\":\"Retrieve the top comments on the Hacker News discussion thread.\",\"agentHint\":\"research\",\"dependsOn\":[\"fetch_top_story\"]},{\"id\":\"summarise_story\",\"description\":\"Write a concise summary combining the article and the discussion.\",\"agentHint\":\"compute\",\"dependsOn\":[\"fetch_story_content\",\"fetch_story_comments\"]},{\"id\":\"compose_tweet\",\"description\":\"Condense the summary into a single tweet under 280 characters.\",\"agentHint\":\"compute\",\"dependsOn\":[\"summarise_story\"]},{\"id\":\"publish_tweet\",\"description\":\"Post the composed tweet to Twitter.\",\"agentHint\":\"publish\",\"dependsOn\":[\"compose_tweet\"]}]}",
+  "tokensIn": 412,
+  "tokensOut": 187
+}

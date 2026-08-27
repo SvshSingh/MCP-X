@@ -1,0 +1,9 @@
+{
+  "goal": "restock the warehouse for next week",
+  "responses": [
+    "{\"tasks\":[{\"id\":\"count_stock\",\"description\":\"Count current stock levels for each SKU.\",\"agentHint\":\"research\",\"dependsOn\":[\"approve_order\"]},{\"id\":\"approve_order\",\"description\":\"Approve the replenishment order.\",\"agentHint\":\"compute\",\"dependsOn\":[\"count_stock\"]}]}",
+    "{\"tasks\":[{\"id\":\"count_stock\",\"description\":\"Count current stock levels for each SKU.\",\"agentHint\":\"research\",\"dependsOn\":[]},{\"id\":\"compute_reorder\",\"description\":\"Compute reorder quantities from stock levels and thresholds.\",\"agentHint\":\"compute\",\"dependsOn\":[\"count_stock\"]},{\"id\":\"approve_order\",\"description\":\"Approve the replenishment order.\",\"agentHint\":\"compute\",\"dependsOn\":[\"compute_reorder\"]}]}"
+  ],
+  "tokensIn": 380,
+  "tokensOut": 120
+}
