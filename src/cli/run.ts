@@ -20,7 +20,9 @@ import { classifyTask } from "../kernel/classifier.js";
 import { createPlan, PlannerError } from "../kernel/planner.js";
 import { blockedByFailures, runPlan, type AgentRunner } from "../kernel/orchestrator.js";
 import { executionWaves } from "../kernel/scheduler.js";
-import type { Plan } from "../kernel/schemas.js";
+import type { Event, Plan } from "../kernel/schemas.js";
+import { formatCost, priceRun, ratesFromEnv } from "../observability/cost.js";
+import { DEFAULT_RUN_DIR, RunLogWriter } from "../observability/runlog.js";
 
 const STATUS_MARK: Record<string, string> = {
   completed: "OK  ",
@@ -90,8 +92,12 @@ async function main(): Promise<number> {
   console.log();
 
   let plan: Plan;
+  let planningUsage = { in: 0, out: 0 };
   try {
-    plan = (await createPlan(goal, { llm })).plan;
+    const planned = await createPlan(goal, { llm });
+    plan = planned.plan;
+    // The planner's spend is real and belongs in the run's totals.
+    planningUsage = { in: planned.tokensIn, out: planned.tokensOut };
   } catch (error) {
     console.error(error instanceof PlannerError ? error.message : String(error));
     return 1;
@@ -110,15 +116,36 @@ async function main(): Promise<number> {
   const routeWith: LlmClient | undefined =
     process.env["ROUTE"] === "keyword" || llm.name === "fixture" ? undefined : llm;
 
+  // Persist as the run happens rather than at the end. A run that dies
+  // mid-flight is exactly the one worth inspecting, and a write-at-the-end
+  // format would leave nothing behind.
+  const runDir = process.env["RUN_DIR"] ?? DEFAULT_RUN_DIR;
+  const runId = `run-${Date.now().toString(36)}`;
+  const startedAt = new Date().toISOString();
+  const writer = new RunLogWriter(runId, runDir);
+
+  writer.write({
+    kind: "header",
+    runId,
+    goal,
+    startedAt,
+    ...(llm.name === "fixture" ? {} : { model: llm.name }),
+  });
+  writer.write({ kind: "plan", plan });
+
   const started = Date.now();
   const outcome = await runPlan({
     plan,
+    runId,
+    priorUsage: planningUsage,
     execute: specialistRunner(failTask),
     classify: async (task) => {
       const decision = await classifyTask(task, { registry, ...(routeWith ? { llm: routeWith } : {}), useHint: false });
       return decision.agent;
     },
     onEvent: (event) => {
+      writer.write({ kind: "event", event: event as Event });
+
       const e = event as { type: string; taskId?: string; agent?: string; attempt?: number };
       if (e.type === "task_started") {
         console.log(`  -> ${e.taskId} [${e.agent}] attempt ${e.attempt}`);
@@ -126,6 +153,17 @@ async function main(): Promise<number> {
     },
   });
   const elapsed = Date.now() - started;
+
+  writer.write({
+    kind: "summary",
+    ok: outcome.ok,
+    totalTokens: outcome.record.totalTokens,
+    costUsd: outcome.record.costUsd,
+    ...(outcome.record.finalOutput === undefined
+      ? {}
+      : { finalOutput: outcome.record.finalOutput }),
+    completedAt: new Date().toISOString(),
+  });
 
   console.log();
   console.log("Result:");
@@ -146,12 +184,16 @@ async function main(): Promise<number> {
     }
   }
 
+  const priced = priceRun(outcome.record, llm.name, ratesFromEnv(llm.name));
+
   console.log();
   console.log(
-    `Run ${outcome.record.runId}: ${outcome.ok ? "succeeded" : "failed"} in ${elapsed}ms, ` +
+    `Run ${runId}: ${outcome.ok ? "succeeded" : "failed"} in ${elapsed}ms, ` +
       `${outcome.record.events.length} events, ` +
-      `${outcome.record.totalTokens.in} in / ${outcome.record.totalTokens.out} out`,
+      `${priced.tokens.in} in / ${priced.tokens.out} out ` +
+      `(${priced.overhead.in}/${priced.overhead.out} planning) ${formatCost(priced.cost)}`,
   );
+  console.log(`Saved to ${writer.path}   replay with: npm run replay -- ${runId}`);
 
   return outcome.ok ? 0 : 1;
 }

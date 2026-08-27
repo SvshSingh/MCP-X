@@ -210,12 +210,33 @@ pre-classifying the plan up front would not cover that.
 
 ---
 
-### Phase 5 — Run records + replay (½ day)
-- [ ] Persist `RunRecord` as JSONL under `runs/<runId>.jsonl`
-- [ ] `npm run replay -- <runId>` reconstructs the full timeline from events
-- [ ] Token + cost accounting per task and per run
+### Phase 5 — Run records + replay ✅ DONE
+- [x] Persist `RunRecord` as JSONL under `runs/<runId>.jsonl`
+- [x] `npm run replay -- <runId>` reconstructs the full timeline from events
+- [x] Token + cost accounting per task and per run
 
-**Done when:** any completed run can be fully reconstructed from disk with no live LLM calls.
+**Done when:** any completed run can be fully reconstructed from disk with no live LLM calls. ✅
+*312 tests, 98.6% statements / 92.6% branches. `runlog.ts` and `cost.ts` both 100% lines.*
+
+**Replay is not a second implementation.** It calls the same `deriveState` the orchestrator
+used while running, so the two cannot drift. A test asserts the reconstructed state map is
+identical to the live one, not merely equivalent.
+
+**An unknown price is reported as unknown, never as zero.** `DEFAULT_RATES` ships empty on
+purpose: model pricing changes and is not something to guess at. A run on an unpriced model
+reports `unpriced` rather than `$0.00`, because a cost report that quietly under-reports is
+worse than none — it gets trusted. Set `LLM_PRICE_IN_PER_MTOK` and `LLM_PRICE_OUT_PER_MTOK`
+to price a run.
+
+**Planner tokens were silently missing from the record.** `runPlan` summed only what tasks
+consumed, so planning spend vanished. Added `priorUsage`, and the run summary now separates
+task spend from overhead — a real run showed `492 in / 237 out (412/187 planning)`, i.e. most
+of the cost was the planner, which the record previously did not show at all.
+
+**JSONL is appended as the run happens, not written at the end.** A run that dies mid-flight
+is exactly the one worth inspecting; a write-at-the-end format would leave nothing.
+`reconstructRunRecord` therefore treats a missing summary line as a crashed run and recomputes
+totals from the events rather than failing.
 
 ---
 
