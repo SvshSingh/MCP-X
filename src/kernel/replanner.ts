@@ -273,7 +273,14 @@ export async function createReplan(
 /** Adapts {@link createReplan} to the hook the orchestrator takes. */
 export const llmReplanner =
   (options: ReplannerOptions) =>
-  async (context: ReplanContext): Promise<{ plan: Plan; reason: string }> => {
+  async (
+    context: ReplanContext,
+  ): Promise<{ plan: Plan; reason: string; tokensIn: number; tokensOut: number }> => {
     const result = await createReplan(context, options);
-    return { plan: result.plan, reason: result.reason };
+    return {
+      plan: result.plan,
+      reason: result.reason,
+      tokensIn: result.tokensIn,
+      tokensOut: result.tokensOut,
+    };
   };

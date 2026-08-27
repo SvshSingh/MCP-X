@@ -325,6 +325,47 @@ describe("runPlan — bounded replanning", () => {
     ]);
   });
 
+  it("folds the replanner's own token cost into the run's totals", async () => {
+    // The same gap Phase 5 closed for the planner's tokens, reintroduced here:
+    // a replan call spends real tokens to propose a route whether or not the
+    // route eventually completes, and the record must not drop them.
+    const alternate = planOf([{ id: "root" }, { id: "alternate", dependsOn: ["root"] }], 1);
+
+    const outcome = await runPlan({
+      plan: original,
+      runId: "run-1",
+      now,
+      maxAttemptsPerTask: 1,
+      priorUsage: { in: 100, out: 50 },
+      execute: (task) =>
+        task.id === "risky"
+          ? { taskId: task.id, ok: false as const, error: "tool is broken" }
+          : { taskId: task.id, ok: true as const, output: "ok", tokensIn: 10, tokensOut: 5 },
+      replan: () =>
+        Promise.resolve({ plan: alternate, reason: "route around it", tokensIn: 60, tokensOut: 30 }),
+    });
+
+    // priorUsage (100/50) + two completed tasks at 10/5 each (20/10) + the
+    // replan call itself (60/30).
+    expect(outcome.record.totalTokens).toEqual({ in: 180, out: 90 });
+  });
+
+  it("defaults replan tokens to zero when the hook omits them", async () => {
+    const alternate = planOf([{ id: "root" }, { id: "alternate", dependsOn: ["root"] }], 1);
+
+    const outcome = await runPlan({
+      plan: original,
+      runId: "run-1",
+      now,
+      maxAttemptsPerTask: 1,
+      execute: brokenTool,
+      // A bare { plan, reason }, as a hand-written replanner might return.
+      replan: () => Promise.resolve({ plan: alternate, reason: "route around it" }),
+    });
+
+    expect(outcome.ok).toBe(true);
+  });
+
   it("emits a replan event naming the trigger and the reason", async () => {
     const alternate = planOf([{ id: "root" }, { id: "alternate", dependsOn: ["root"] }], 1);
 
@@ -483,12 +524,24 @@ describe("runPlan — bounded replanning", () => {
 });
 
 describe("llmReplanner adapter", () => {
-  it("returns just the plan and reason", async () => {
+  it("returns the plan and reason", async () => {
     const replan = llmReplanner({ llm: new ScriptedLlm([goodRevision]), now });
 
     const result = await replan(contextAfterFailure());
 
     expect(result.plan.revision).toBe(1);
     expect(result.reason).toBe("use a different source");
+  });
+
+  it("also passes through the token cost of producing the replan", async () => {
+    // Otherwise the orchestrator has no way to attribute this spend, and it
+    // would fall out of the run record exactly like the planner's tokens did
+    // before Phase 5.
+    const replan = llmReplanner({ llm: new ScriptedLlm([goodRevision]), now });
+
+    const result = await replan(contextAfterFailure());
+
+    expect(result.tokensIn).toBe(60);
+    expect(result.tokensOut).toBe(30);
   });
 });
