@@ -21,8 +21,16 @@ import { LlmError, type LlmClient, type LlmRequest, type LlmResponse } from "./t
 
 export const Fixture = z
   .object({
-    /** Matched against the prompt to select this fixture. */
+    /** Identifies the fixture, and is the default text matched in the prompt. */
     goal: z.string().min(1),
+    /**
+     * Overrides what is matched against the prompt.
+     *
+     * Needed because the goal appears in the planner's prompt *and* the
+     * replanner's, so a replan fixture must key on something only the
+     * replanner says — otherwise one fixture would answer both.
+     */
+    match: z.string().min(1).optional(),
     /** A single response, or several returned in order (the last repeats). */
     response: z.string().optional(),
     responses: z.array(z.string()).optional(),
@@ -65,11 +73,18 @@ export class FixtureLlmClient implements LlmClient {
   async generate(request: LlmRequest): Promise<LlmResponse> {
     const haystack = normalise(`${request.system ?? ""} ${request.prompt}`);
 
-    // Longest goal first, so a specific fixture wins over a broader one whose
-    // text happens to be a substring of the same prompt.
+    const matchTextOf = (fixture: Fixture): string => fixture.match ?? fixture.goal;
+
+    // An explicit `match` outranks one defaulting to the goal, then longer
+    // beats shorter. Length alone is not enough: a replanner's prompt restates
+    // the goal, so a long goal would otherwise capture every replan fixture
+    // keyed on a shorter, deliberately chosen marker.
     const fixture = [...this.#fixtures]
-      .sort((a, b) => b.goal.length - a.goal.length)
-      .find((candidate) => haystack.includes(normalise(candidate.goal)));
+      .sort((a, b) => {
+        const explicit = Number(b.match !== undefined) - Number(a.match !== undefined);
+        return explicit !== 0 ? explicit : matchTextOf(b).length - matchTextOf(a).length;
+      })
+      .find((candidate) => haystack.includes(normalise(matchTextOf(candidate))));
 
     if (!fixture) {
       throw new LlmError(

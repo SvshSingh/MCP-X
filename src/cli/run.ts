@@ -18,7 +18,13 @@ import { createLlmClient } from "../llm/index.js";
 import { LlmError, type LlmClient } from "../llm/types.js";
 import { classifyTask } from "../kernel/classifier.js";
 import { createPlan, PlannerError } from "../kernel/planner.js";
-import { blockedByFailures, runPlan, type AgentRunner } from "../kernel/orchestrator.js";
+import {
+  blockedByFailures,
+  DEFAULT_MAX_REPLANS,
+  runPlan,
+  type AgentRunner,
+} from "../kernel/orchestrator.js";
+import { llmReplanner } from "../kernel/replanner.js";
 import { executionWaves } from "../kernel/scheduler.js";
 import type { Event, Plan } from "../kernel/schemas.js";
 import { formatCost, priceRun, ratesFromEnv } from "../observability/cost.js";
@@ -131,13 +137,26 @@ async function main(): Promise<number> {
     startedAt,
     ...(llm.name === "fixture" ? {} : { model: llm.name }),
   });
-  writer.write({ kind: "plan", plan });
+
+  const maxReplans = Number(process.env["MAX_REPLANS"] ?? DEFAULT_MAX_REPLANS);
 
   const started = Date.now();
   const outcome = await runPlan({
     plan,
     runId,
     priorUsage: planningUsage,
+    maxReplans: Number.isInteger(maxReplans) && maxReplans >= 0 ? maxReplans : DEFAULT_MAX_REPLANS,
+    replan: llmReplanner({ llm }),
+    onReplanError: (error) => {
+      console.log();
+      console.log(
+        `  ** replan unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      console.log();
+    },
+    onPlanRevision: (revision) => {
+      writer.write({ kind: "plan", plan: revision });
+    },
     execute: specialistRunner(failTask),
     classify: async (task) => {
       const decision = await classifyTask(task, { registry, ...(routeWith ? { llm: routeWith } : {}), useHint: false });
@@ -146,9 +165,26 @@ async function main(): Promise<number> {
     onEvent: (event) => {
       writer.write({ kind: "event", event: event as Event });
 
-      const e = event as { type: string; taskId?: string; agent?: string; attempt?: number };
+      const e = event as {
+        type: string;
+        taskId?: string;
+        agent?: string;
+        attempt?: number;
+        fromRevision?: number;
+        toRevision?: number;
+        reason?: string;
+      };
+
       if (e.type === "task_started") {
         console.log(`  -> ${e.taskId} [${e.agent}] attempt ${e.attempt}`);
+      }
+      if (e.type === "replan") {
+        console.log();
+        console.log(
+          `  ** replan: revision ${e.fromRevision} -> ${e.toRevision} (${e.taskId ?? "failure"})`,
+        );
+        console.log(`     ${e.reason}`);
+        console.log();
       }
     },
   });
@@ -165,16 +201,26 @@ async function main(): Promise<number> {
     completedAt: new Date().toISOString(),
   });
 
+  // After a replan the executed plan is the last revision, not the first.
+  const finalPlan = outcome.record.planRevisions.at(-1) ?? plan;
+
   console.log();
-  console.log("Result:");
-  for (const task of plan.tasks) {
+  if (outcome.record.planRevisions.length > 1) {
+    console.log(
+      `Result (revision ${finalPlan.revision} of ${outcome.record.planRevisions.length - 1}):`,
+    );
+  } else {
+    console.log("Result:");
+  }
+
+  for (const task of finalPlan.tasks) {
     const state = outcome.state.tasks.get(task.id);
     const mark = STATUS_MARK[state?.status ?? "pending"] ?? "????";
     const reason = state?.error === undefined ? "" : `  (${state.error})`;
     console.log(`  ${mark}  ${task.id}${reason}`);
   }
 
-  const blocked = blockedByFailures(plan, outcome.state);
+  const blocked = blockedByFailures(finalPlan, outcome.state);
   if (blocked.size > 0) {
     console.log();
     for (const [failedId, downstream] of blocked) {

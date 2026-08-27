@@ -240,13 +240,35 @@ totals from the events rather than failing.
 
 ---
 
-### Phase 6 — Bounded adaptive replanning (½ day)
-- [ ] On task failure, invoke replanner with the failure context and remaining tasks
-- [ ] Hard cap (`MAX_REPLANS=2`); append the new plan revision rather than mutating
-- [ ] Emit a `replan` event so the run record shows exactly what changed and why
+### Phase 6 — Bounded adaptive replanning ✅ DONE
+- [x] On task failure, invoke replanner with the failure context and remaining tasks
+- [x] Hard cap (`MAX_REPLANS=2`); append the new plan revision rather than mutating
+- [x] Emit a `replan` event so the run record shows exactly what changed and why
 
 **Done when:** a deliberately broken tool triggers exactly one replan, the run completes via an
-alternate path, and both plan revisions are visible in the run record.
+alternate path, and both plan revisions are visible in the run record. ✅
+*342 tests, 98.6% statements / 92.0% branches.*
+
+**Two invariants fall out of event sourcing and are enforced, not hoped for.** State is derived
+by replaying events over the *current* plan, so:
+
+- A completed task keeps its result only while its id survives into the new revision. Drop the
+  id and the work is silently redone. `validateRevision` rejects that.
+- The failed task's id must **not** reappear. Its `task_failed` event is still in the log and
+  would replay against the new plan, marking the task failed the instant it is added — an
+  alternate path built on the same id could never run. Also rejected.
+
+Both problems are fed back to the model as specific instructions ("give the alternate route a
+different id"), reusing the planner's repair-loop pattern.
+
+**A replanner that throws is reported, not swallowed.** The first cut caught the error silently
+and ended the run, which is indistinguishable from having no replanner configured — precisely
+the wrong thing to debug blind. `onReplanError` surfaces it.
+
+**Fixture matching needed an explicit `match` key.** The replanner restates the goal in its
+prompt, so a goal-keyed fixture captured every replan prompt for the same goal. Longest-match
+ordering did not save it: the HN goal (48 chars) outranked the replan marker (40). Explicit
+`match` now outranks a defaulted goal. Caught by the demo failing to replan at all.
 
 ---
 

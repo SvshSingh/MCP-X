@@ -53,7 +53,7 @@ User goal (natural language)
 | `src/cli/run.ts` | plan then execute, with stubbed agents | 3 | **built** |
 | `src/agents/registry.ts` | agent manifest + enforced tool ownership | 4 | **built** |
 | `src/kernel/classifier.ts` | task → specialist routing | 4 | **built** |
-| `src/kernel/replanner.ts` | bounded adaptive replanning | 6 | pending |
+| `src/kernel/replanner.ts` | bounded adaptive replanning | 6 | **built** |
 | `src/observability/runlog.ts` | JSONL persistence + reconstruction | 5 | **built** |
 | `src/observability/cost.ts` | token and cost accounting, per task and per run | 5 | **built** |
 | `src/cli/replay.ts` | rebuild a run from disk, no live calls | 5 | **built** |
@@ -189,6 +189,15 @@ quietly under-reports is worse than no report at all: it gets trusted.
 worth inspecting, so the format leaves a readable prefix rather than nothing.
 Reconstruction treats a missing summary line as a crash and recomputes totals
 from the events.
+
+**Replanning is bounded, and its constraints are enforced.** A terminal task
+failure triggers a repair attempt within a hard cap, so a goal that cannot be
+reached fails in bounded time rather than generating plans forever. Because
+state is replayed over the current plan, a revision must keep every completed
+task's id (or its result is silently discarded and the work redone) and must
+not reuse the failed task's id (or the replayed `task_failed` event marks the
+alternate route failed the moment it is added). Both are validated and fed
+back to the model as specific corrections.
 
 **Plan revisions are append-only.** A replan appends a revision rather than
 mutating the last one, so the run record shows what changed and why.
