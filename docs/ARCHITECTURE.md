@@ -54,7 +54,9 @@ User goal (natural language)
 | `src/agents/registry.ts` | agent manifest + enforced tool ownership | 4 | **built** |
 | `src/kernel/classifier.ts` | task → specialist routing | 4 | **built** |
 | `src/kernel/replanner.ts` | bounded adaptive replanning | 6 | pending |
-| `src/observability/` | `RunRecord` persistence (JSONL) + cost accounting | 5 | pending |
+| `src/observability/runlog.ts` | JSONL persistence + reconstruction | 5 | **built** |
+| `src/observability/cost.ts` | token and cost accounting, per task and per run | 5 | **built** |
+| `src/cli/replay.ts` | rebuild a run from disk, no live calls | 5 | **built** |
 | `eval/` | golden scenarios, scoring, variance report | 7 | pending |
 
 `client/` and `server/` still hold the original plain-JS demo, kept as a
@@ -66,6 +68,8 @@ reference against the port. `src/llm/` and `src/mcp/` supersede them.
 npm run plan -- "<goal>"          # goal -> validated task DAG (needs GEMINI_API_KEY)
 npm run execute -- "<goal>"       # plan, then run it with stubbed agents
 npm run serve                     # MCP server on :3001
+npm run replay -- <runId>         # rebuild a finished run from disk
+npm run replay                    # list runs on disk
 
 PLANNER_MODE=fixture npm run execute -- "post a summary of today's top HN story to Twitter"
 PLANNER_MODE=fixture FAIL_TASK=fetch_story_content npm run execute -- "post a summary of today's top HN story to Twitter"
@@ -169,6 +173,22 @@ that is occasionally wrong, because the orchestrator would dispatch into
 nothing. The keyword path is not only an outage fallback — it is what makes
 routing accuracy measurable with no network, so a routing regression shows up
 as a number rather than a vague sense that the agent got worse.
+
+**Replay is the same function as execution.** `deriveState` reconstructs
+state from events whether those events are in memory or read off disk, so a
+replay cannot disagree with the run it replays. A test asserts the
+reconstructed state map is identical to the live one rather than merely
+equivalent.
+
+**An unknown price is reported as unknown, never as zero.** The rate table
+ships empty on purpose — model pricing changes and is not worth guessing at.
+An unpriced model yields `unpriced`, not `$0.00`, because a cost report that
+quietly under-reports is worse than no report at all: it gets trusted.
+
+**Run logs are appended as the run happens.** A crashed run is exactly the one
+worth inspecting, so the format leaves a readable prefix rather than nothing.
+Reconstruction treats a missing summary line as a crash and recomputes totals
+from the events.
 
 **Plan revisions are append-only.** A replan appends a revision rather than
 mutating the last one, so the run record shows what changed and why.

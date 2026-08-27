@@ -13,6 +13,7 @@ export default defineConfig({
         "src/kernel/**/*.ts",
         "src/llm/**/*.ts",
         "src/agents/**/*.ts",
+        "src/observability/**/*.ts",
         "src/mcp/tools.ts",
       ],
       exclude: [

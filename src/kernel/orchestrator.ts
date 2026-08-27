@@ -21,6 +21,7 @@ import {
   type AgentResultInput,
   type Plan,
   type Task,
+  type TokenUsage,
 } from "./schemas.js";
 
 export const DEFAULT_MAX_TASK_ATTEMPTS = 2;
@@ -56,8 +57,17 @@ export interface OrchestratorOptions {
   /** Attempts per task, including the first. */
   maxAttemptsPerTask?: number;
   now?: () => Date;
-  /** Called after each wave; useful for progress output. */
+  /** Called for every appended event; useful for progress output and logging. */
   onEvent?: (event: Readonly<{ type: string }>) => void;
+  /**
+   * Tokens already spent before execution began — planning, replanning,
+   * routing. Added to the run totals.
+   *
+   * Without this the record would sum only what tasks consumed, quietly
+   * omitting the planner's spend. That is real money, and a cost report that
+   * under-reports is worse than none because it gets trusted.
+   */
+  priorUsage?: TokenUsage;
 }
 
 export interface RunOutcome {
@@ -197,7 +207,10 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
     goal: plan.goal,
     planRevisions: [plan],
     events: [...board.events],
-    totalTokens: { in: finalState.tokensIn, out: finalState.tokensOut },
+    totalTokens: {
+      in: finalState.tokensIn + (options.priorUsage?.in ?? 0),
+      out: finalState.tokensOut + (options.priorUsage?.out ?? 0),
+    },
     costUsd: 0,
     ...(finalOutput === "" ? {} : { finalOutput }),
     startedAt,
