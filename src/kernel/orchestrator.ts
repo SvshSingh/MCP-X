@@ -14,6 +14,7 @@
  */
 
 import { Blackboard, taskState, type RunState } from "./blackboard.js";
+import type { ReplanContext } from "./replanner.js";
 import { downstreamOf, isStalled, readyTasks, sinkTasks } from "./scheduler.js";
 import {
   AgentResult,
@@ -25,6 +26,7 @@ import {
 } from "./schemas.js";
 
 export const DEFAULT_MAX_TASK_ATTEMPTS = 2;
+export const DEFAULT_MAX_REPLANS = 2;
 
 /**
  * Executes one task. Phase 4 replaces the stub with real specialist agents.
@@ -60,6 +62,13 @@ export interface OrchestratorOptions {
   /** Called for every appended event; useful for progress output and logging. */
   onEvent?: (event: Readonly<{ type: string }>) => void;
   /**
+   * Called for each plan revision, including the initial one, as it takes
+   * effect. A log writer needs this: the `replan` event records that a repair
+   * happened, but deliberately does not carry the plan itself — duplicating
+   * every task into the event stream would bloat the log for no gain.
+   */
+  onPlanRevision?: (plan: Plan) => void;
+  /**
    * Tokens already spent before execution began — planning, replanning,
    * routing. Added to the run totals.
    *
@@ -68,6 +77,18 @@ export interface OrchestratorOptions {
    * under-reports is worse than none because it gets trusted.
    */
   priorUsage?: TokenUsage;
+  /**
+   * Repairs the plan after a terminal task failure. Omit to disable
+   * replanning, in which case a failure blocks its subtree and the run ends.
+   */
+  replan?: (context: ReplanContext) => Promise<{ plan: Plan; reason: string }>;
+  /**
+   * Hard cap on repairs per run. The bound is the point: without it, a goal
+   * that cannot be reached would produce plans forever.
+   */
+  maxReplans?: number;
+  /** Reports a replanner that threw. The run then ends with its existing failure. */
+  onReplanError?: (error: unknown, context: ReplanContext) => void;
 }
 
 export interface RunOutcome {
@@ -89,20 +110,27 @@ function resultFromThrow(task: Task, error: unknown): AgentResult {
 }
 
 export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome> {
-  const { plan, execute } = options;
+  const { execute } = options;
   const classify = options.classify ?? defaultClassifier;
   const maxAttempts = options.maxAttemptsPerTask ?? DEFAULT_MAX_TASK_ATTEMPTS;
+  const maxReplans = options.maxReplans ?? DEFAULT_MAX_REPLANS;
   const now = options.now ?? (() => new Date());
   const runId = options.runId ?? `run-${now().getTime().toString(36)}`;
 
   const board = new Blackboard(runId, { now });
   const startedAt = now().toISOString();
 
+  // Revisions are appended, never mutated, so the record shows what changed.
+  const revisions: Plan[] = [options.plan];
+  let plan = options.plan;
+  let replansUsed = 0;
+
   const emit = (event: Parameters<Blackboard["append"]>[0]): void => {
     const appended = board.append(event);
     options.onEvent?.(appended);
   };
 
+  options.onPlanRevision?.(plan);
   emit({ type: "plan_created", revision: plan.revision, taskCount: plan.tasks.length });
 
   for (;;) {
@@ -111,7 +139,47 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
     const unfinished = [...state.tasks.values()].filter(
       (task) => task.status === "pending" || task.status === "running",
     );
-    if (unfinished.length === 0) break;
+
+    if (unfinished.length === 0) {
+      // Everything is terminal. If something failed and repairs remain, try an
+      // alternate route before calling the run over.
+      const failed = [...state.tasks.values()].find((task) => task.status === "failed");
+      if (!options.replan || !failed || replansUsed >= maxReplans) break;
+
+      const context: ReplanContext = {
+        goal: plan.goal,
+        plan,
+        state,
+        failedTaskId: failed.id,
+        error: failed.error ?? "unknown failure",
+      };
+
+      let repaired;
+      try {
+        repaired = await options.replan(context);
+      } catch (error) {
+        // A replanner that cannot produce a route is not a crash; the run ends
+        // with the failure it already had. But it is reported rather than
+        // swallowed — silence here is indistinguishable from having no
+        // replanner at all, which is exactly the wrong thing to debug blind.
+        options.onReplanError?.(error, context);
+        break;
+      }
+
+      replansUsed++;
+      emit({
+        type: "replan",
+        fromRevision: plan.revision,
+        toRevision: repaired.plan.revision,
+        reason: repaired.reason,
+        triggeredByTaskId: failed.id,
+      });
+
+      plan = repaired.plan;
+      revisions.push(plan);
+      options.onPlanRevision?.(plan);
+      continue;
+    }
 
     const wave = readyTasks(plan, state);
 
@@ -205,7 +273,7 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
   const record = RunRecord.parse({
     runId,
     goal: plan.goal,
-    planRevisions: [plan],
+    planRevisions: revisions,
     events: [...board.events],
     totalTokens: {
       in: finalState.tokensIn + (options.priorUsage?.in ?? 0),
