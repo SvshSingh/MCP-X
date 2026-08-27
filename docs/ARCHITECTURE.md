@@ -47,9 +47,10 @@ User goal (natural language)
 | `src/llm/` | `LlmClient` interface, Gemini client with retry + token accounting, fixture client | 2 | **built** |
 | `src/mcp/` | MCP server over SSE + tool registry | 2 | **built** |
 | `src/cli/plan.ts` | plan a goal from the command line | 2 | **built** |
-| `src/kernel/scheduler.ts` | topological readiness + parallel dispatch | 3 | pending |
-| `src/kernel/orchestrator.ts` | execution loop, retry and failure policy | 3 | pending |
-| `src/kernel/blackboard.ts` | append-only event log + derived state snapshot | 3 | pending |
+| `src/kernel/blackboard.ts` | append-only event log + derived state | 3 | **built** |
+| `src/kernel/scheduler.ts` | topological readiness + parallel dispatch | 3 | **built** |
+| `src/kernel/orchestrator.ts` | execution loop, retry and failure policy | 3 | **built** |
+| `src/cli/run.ts` | plan then execute, with stubbed agents | 3 | **built** |
 | `src/kernel/classifier.ts` | task → specialist routing | 4 | pending |
 | `src/agents/registry.ts` | agent → capability/tool manifest | 4 | pending |
 | `src/kernel/replanner.ts` | bounded adaptive replanning | 6 | pending |
@@ -62,9 +63,12 @@ reference against the port. `src/llm/` and `src/mcp/` supersede them.
 ## Running it
 
 ```bash
-npm run plan -- "post a summary of today's top HN story to Twitter"   # needs GEMINI_API_KEY
-PLANNER_MODE=fixture npm run plan -- "restock the warehouse for next week"
-npm run serve                                                         # MCP server on :3001
+npm run plan -- "<goal>"          # goal -> validated task DAG (needs GEMINI_API_KEY)
+npm run execute -- "<goal>"       # plan, then run it with stubbed agents
+npm run serve                     # MCP server on :3001
+
+PLANNER_MODE=fixture npm run execute -- "post a summary of today's top HN story to Twitter"
+PLANNER_MODE=fixture FAIL_TASK=fetch_story_content npm run execute -- "post a summary of today's top HN story to Twitter"
 ```
 
 ## Design decisions
@@ -124,6 +128,31 @@ server called `server.tool(...)` inline at startup, which means the tool set
 exists only inside a running server. Phase 4 has to partition tools across
 specialists, so `tools.ts` exports a registry with a `capability` on each entry
 — the seam the classifier routes on.
+
+**State is derived from the log, never stored beside it.** The event log is the
+only writable thing in a run. Task status, attempt counts and token totals are
+recomputed by `deriveState` on every loop iteration rather than mutated in
+place. That costs a cheap replay per wave and buys an invariant worth far more:
+what the orchestrator believes and what the durable record says cannot drift
+apart. It also means Phase 5's replay is not a second implementation of the
+orchestrator — it is this same pure function applied to events read off disk.
+
+**`blocked` is computed, not recorded.** There is deliberately no
+`task_blocked` event. A task is blocked when any dependency failed terminally,
+or when a dependency is itself blocked. The propagation is a fixpoint pass
+rather than a single sweep, so a failure three levels up still blocks the whole
+subtree beneath it.
+
+**A failing task must not cancel its siblings.** Waves dispatch through
+`Promise.allSettled`, not `Promise.all`. When one branch fails, the other may
+be the only work that can still make progress, and abandoning it would turn one
+failure into two.
+
+**The orchestrator refuses to spin.** If no task is ready, none is running, and
+work remains, it throws. With a validated DAG and correct blocking that is
+unreachable — but the alternative failure mode is a process that hangs
+silently, which is far worse to diagnose than an explicit error naming the
+stuck tasks.
 
 **Plan revisions are append-only.** A replan appends a revision rather than
 mutating the last one, so the run record shows what changed and why.
