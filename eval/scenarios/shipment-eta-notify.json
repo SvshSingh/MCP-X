@@ -1,0 +1,12 @@
+{
+  "id": "shipment-eta-notify",
+  "goal": "look up the delayed shipments, work out revised delivery dates, and email the customers",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 8
+}

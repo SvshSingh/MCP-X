@@ -1,0 +1,12 @@
+{
+  "id": "warehouse-restock",
+  "goal": "check warehouse stock levels, work out reorder quantities, and notify the supplier",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 8
+}

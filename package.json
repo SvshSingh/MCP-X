@@ -16,7 +16,10 @@
     "serve": "tsx src/mcp/main.ts",
     "plan": "tsx src/cli/plan.ts",
     "execute": "tsx src/cli/run.ts",
-    "replay": "tsx src/cli/replay.ts"
+    "replay": "tsx src/cli/replay.ts",
+    "eval": "tsx eval/cli.ts",
+    "eval:live": "tsx eval/cli.ts --live",
+    "eval:record": "tsx eval/record-fixtures.ts"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",

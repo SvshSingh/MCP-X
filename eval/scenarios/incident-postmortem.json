@@ -1,0 +1,12 @@
+{
+  "id": "incident-postmortem",
+  "goal": "gather the logs and alerts from last night's outage, write a postmortem, and publish it",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 9
+}

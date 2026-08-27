@@ -1,0 +1,6 @@
+{
+  "goal": "audit inventory counts against the ledger and list the discrepancies",
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_physical_inventory\",\n      \"description\": \"Retrieve the latest physical inventory count data from the warehouse management system.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"fetch_ledger_records\",\n      \"description\": \"Retrieve the current inventory ledger records from the accounting database.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"calculate_discrepancies\",\n      \"description\": \"Compare physical counts against ledger records to identify numerical differences.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_physical_inventory\",\n        \"fetch_ledger_records\"\n      ]\n    },\n    {\n      \"id\": \"generate_audit_report\",\n      \"description\": \"Format the identified discrepancies into a formal audit report.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"calculate_discrepancies\"\n      ]\n    }\n  ]\n}",
+  "tokensIn": 319,
+  "tokensOut": 252
+}

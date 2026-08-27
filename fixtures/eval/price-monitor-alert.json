@@ -1,0 +1,6 @@
+{
+  "goal": "check competitor prices for our top product and alert the team if any undercut us",
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"identify_competitors\",\n      \"description\": \"Identify the top three direct competitors for the specified product.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"scrape_competitor_prices\",\n      \"description\": \"Extract current pricing data for the product from identified competitor websites.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": [\"identify_competitors\"]\n    },\n    {\n      \"id\": \"compare_prices\",\n      \"description\": \"Compare the scraped competitor prices against our current product price.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"scrape_competitor_prices\"]\n    },\n    {\n      \"id\": \"evaluate_undercutting\",\n      \"description\": \"Determine if any competitor price is lower than our current price.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"compare_prices\"]\n    },\n    {\n      \"id\": \"notify_team\",\n      \"description\": \"Send an alert to the team if any competitor is undercutting our price.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\"evaluate_undercutting\"]\n    }\n  ]\n}",
+  "tokensIn": 324,
+  "tokensOut": 293
+}

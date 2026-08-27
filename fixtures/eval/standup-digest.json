@@ -1,0 +1,6 @@
+{
+  "goal": "gather yesterday's commits and open issues, summarise them, and post the standup digest",
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_yesterday_commits\",\n      \"description\": \"Retrieve all git commits from the previous calendar day.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"fetch_open_issues\",\n      \"description\": \"Retrieve all currently open issues from the project repository.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"summarize_activity\",\n      \"description\": \"Synthesize the retrieved commits and open issues into a concise standup summary.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_yesterday_commits\",\n        \"fetch_open_issues\"\n      ]\n    },\n    {\n      \"id\": \"post_standup_digest\",\n      \"description\": \"Publish the generated summary to the team communication channel.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"summarize_activity\"\n      ]\n    }\n  ]\n}",
+  "tokensIn": 327,
+  "tokensOut": 252
+}

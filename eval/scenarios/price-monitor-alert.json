@@ -1,0 +1,12 @@
+{
+  "id": "price-monitor-alert",
+  "goal": "check competitor prices for our top product and alert the team if any undercut us",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 8
+}

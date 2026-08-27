@@ -1,0 +1,12 @@
+{
+  "id": "hn-summary-to-twitter",
+  "goal": "post a summary of today's top HN story to Twitter",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 8
+}

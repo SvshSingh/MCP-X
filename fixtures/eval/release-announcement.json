@@ -1,0 +1,6 @@
+{
+  "goal": "collect the merged pull requests since the last tag, write a changelog, and announce it",
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"get_latest_tag\",\n      \"description\": \"Identify the most recent git tag in the repository.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"fetch_merged_prs\",\n      \"description\": \"Retrieve all merged pull requests created after the latest tag timestamp.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": [\"get_latest_tag\"]\n    },\n    {\n      \"id\": \"generate_changelog_content\",\n      \"description\": \"Format the list of merged pull requests into a structured markdown changelog.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"fetch_merged_prs\"]\n    },\n    {\n      \"id\": \"publish_changelog\",\n      \"description\": \"Post the generated changelog to the project's release notes or documentation.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\"generate_changelog_content\"]\n    },\n    {\n      \"id\": \"announce_release\",\n      \"description\": \"Send a notification message about the new release to the team communication channel.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\"publish_changelog\"]\n    }\n  ]\n}",
+  "tokensIn": 327,
+  "tokensOut": 299
+}

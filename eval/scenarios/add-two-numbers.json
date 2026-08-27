@@ -1,0 +1,10 @@
+{
+  "id": "add-two-numbers",
+  "goal": "add 2 and 3 and tell me the answer",
+  "expectedCapabilities": [
+    "compute"
+  ],
+  "optimalSteps": 1,
+  "maxSteps": 3,
+  "notes": "Smallest useful goal. A plan longer than three steps is padding."
+}
