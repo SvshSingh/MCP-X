@@ -251,3 +251,35 @@ and it's what separates this from every other "I built an agent" project.
 
 Work one phase per session. Each phase has a "Done when" — treat it as the acceptance test.
 Do not start the next phase until the current phase's tests pass.
+
+---
+
+## Live-API findings (Phase 2, 2026-08-27)
+
+Recorded from three consecutive real runs of the same goal against
+`gemini-3.6-flash`. These are inputs to Phase 7's metric design.
+
+**Structure is stable; identifiers are not.** All three runs produced 4 tasks
+with an identical capability sequence (`research → research → compute →
+publish`) and identical dependency shape. Task ids differed on every run:
+`fetch_hn_top_story` vs `fetch_top_hn_story`, `generate_tweet_summary` vs
+`summarize_story`, `post_to_twitter` vs `post_summary_to_twitter` vs
+`post_tweet`.
+
+*Consequence:* eval scoring must compare graph shape and capability sequence.
+Any metric keyed on task id will report variance that is pure noise.
+
+**Output token count varies slightly** (270 / 252 / 253 for identical input at
+temperature 0) while input tokens are constant at 321. Cost per run is
+therefore a distribution, not a number — Phase 5 should record actuals rather
+than estimate from a fixed rate.
+
+**The live model returns a linear chain, not a parallel branch.** The
+`hn-summary-to-twitter` fixture is deliberately a diamond, so it is *more*
+demanding than observed reality. The "exposes a parallel branch" test therefore
+validates the scheduler's requirement, not the planner's behaviour. Phase 7
+should measure how often real plans contain exploitable parallelism.
+
+**Models retire without warning.** `gemini-2.0-flash` and `gemini-2.5-flash`
+both 404 for new users as of this date. Pinning is still correct (an alias
+would corrupt variance measurement), but the pin needs periodic revisiting.
