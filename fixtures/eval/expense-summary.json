@@ -1,0 +1,6 @@
+{
+  "goal": "pull last month's expense records and calculate the total per department",
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"determine_date_range\",\n      \"description\": \"Calculate the start and end dates for last month.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"fetch_expense_records\",\n      \"description\": \"Retrieve all expense records matching the calculated date range from the accounting database.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": [\n        \"determine_date_range\"\n      ]\n    },\n    {\n      \"id\": \"calculate_department_totals\",\n      \"description\": \"Group the expense records by department and sum the total expenses for each group.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_expense_records\"\n      ]\n    },\n    {\n      \"id\": \"publish_expense_report\",\n      \"description\": \"Format and output the finalized expense summary per department.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"calculate_department_totals\"\n      ]\n    }\n  ]\n}",
+  "tokensIn": 322,
+  "tokensOut": 257
+}

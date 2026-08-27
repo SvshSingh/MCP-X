@@ -25,6 +25,19 @@ export const DEFAULT_MODEL = "gemini-3.6-flash";
 /** Statuses worth retrying: rate limits, and the server-side 5xx family. */
 const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
+/**
+ * A 429 is usually a per-minute rate limit and worth a short backoff. A
+ * per-*day* quota is a different animal: no backoff this side of tomorrow will
+ * clear it, so retrying only wastes time and muddies the error the caller
+ * finally sees.
+ */
+const DAILY_QUOTA_PATTERN = /PerDay|per day|RequestsPerDayPerProject|free_tier_requests/i;
+
+export const isDailyQuotaExhausted = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return statusOf(error) === 429 && DAILY_QUOTA_PATTERN.test(message);
+};
+
 export interface GeminiClientOptions {
   apiKey: string;
   model?: string;
@@ -68,6 +81,9 @@ export function statusOf(error: unknown): number | undefined {
 export function isRetryable(error: unknown): boolean {
   // An LlmError has already classified itself - trust it over any heuristic.
   if (error instanceof LlmError) return error.retryable;
+
+  // Checked before the status table, which would otherwise wave a 429 through.
+  if (isDailyQuotaExhausted(error)) return false;
 
   const status = statusOf(error);
   if (status !== undefined) return RETRYABLE_STATUSES.has(status);

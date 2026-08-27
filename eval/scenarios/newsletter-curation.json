@@ -1,0 +1,12 @@
+{
+  "id": "newsletter-curation",
+  "goal": "find this week's most discussed engineering articles, summarise each, and publish the newsletter",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 9
+}

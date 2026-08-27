@@ -1,0 +1,11 @@
+{
+  "id": "expense-summary",
+  "goal": "pull last month's expense records and calculate the total per department",
+  "expectedCapabilities": [
+    "research",
+    "compute"
+  ],
+  "terminalCapability": "compute",
+  "optimalSteps": 3,
+  "maxSteps": 6
+}

@@ -1,0 +1,11 @@
+{
+  "id": "inventory-audit",
+  "goal": "audit inventory counts against the ledger and list the discrepancies",
+  "expectedCapabilities": [
+    "research",
+    "compute"
+  ],
+  "terminalCapability": "compute",
+  "optimalSteps": 3,
+  "maxSteps": 7
+}

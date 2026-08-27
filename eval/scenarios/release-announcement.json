@@ -1,0 +1,12 @@
+{
+  "id": "release-announcement",
+  "goal": "collect the merged pull requests since the last tag, write a changelog, and announce it",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 8
+}

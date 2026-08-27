@@ -1,0 +1,11 @@
+{
+  "id": "compare-suppliers",
+  "goal": "compare our three suppliers on lead time and unit price, and rank them",
+  "expectedCapabilities": [
+    "research",
+    "compute"
+  ],
+  "terminalCapability": "compute",
+  "optimalSteps": 3,
+  "maxSteps": 7
+}

@@ -1,0 +1,6 @@
+{
+  "goal": "check warehouse stock levels, work out reorder quantities, and notify the supplier",
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_current_stock\",\n      \"description\": \"Retrieve the current inventory levels from the warehouse database.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"calculate_reorder_needs\",\n      \"description\": \"Compare current stock levels against minimum thresholds to determine required reorder quantities.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"fetch_current_stock\"]\n    },\n    {\n      \"id\": \"format_supplier_order\",\n      \"description\": \"Generate a formal purchase order document based on the calculated reorder quantities.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"calculate_reorder_needs\"]\n    },\n    {\n      \"id\": \"notify_supplier\",\n      \"description\": \"Send the generated purchase order to the supplier via email or API.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\"format_supplier_order\"]\n    }\n  ]\n}",
+  "tokensIn": 324,
+  "tokensOut": 241
+}

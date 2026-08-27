@@ -1,0 +1,11 @@
+{
+  "id": "supplier-scorecard",
+  "goal": "retrieve delivery performance data for each supplier and compute a quarterly scorecard",
+  "expectedCapabilities": [
+    "research",
+    "compute"
+  ],
+  "terminalCapability": "compute",
+  "optimalSteps": 3,
+  "maxSteps": 7
+}

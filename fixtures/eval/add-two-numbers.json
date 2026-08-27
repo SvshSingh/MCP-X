@@ -1,0 +1,6 @@
+{
+  "goal": "add 2 and 3 and tell me the answer",
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"extract_operands\",\n      \"description\": \"Extract the numerical operands 2 and 3 from the prompt.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"calculate_sum\",\n      \"description\": \"Add the numbers 2 and 3 together to obtain the sum.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"extract_operands\"\n      ]\n    },\n    {\n      \"id\": \"report_result\",\n      \"description\": \"Format and deliver the calculated sum to the user.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"calculate_sum\"\n      ]\n    }\n  ]\n}",
+  "tokensIn": 320,
+  "tokensOut": 185
+}

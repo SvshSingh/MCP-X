@@ -57,7 +57,9 @@ User goal (natural language)
 | `src/observability/runlog.ts` | JSONL persistence + reconstruction | 5 | **built** |
 | `src/observability/cost.ts` | token and cost accounting, per task and per run | 5 | **built** |
 | `src/cli/replay.ts` | rebuild a run from disk, no live calls | 5 | **built** |
-| `eval/` | golden scenarios, scoring, variance report | 7 | pending |
+| `eval/metrics.ts` | scoring: completion, validity, precision/recall, variance | 7 | **built** |
+| `eval/runner.ts` | executes every scenario N times | 7 | **built** |
+| `eval/report.ts` | renders the markdown report | 7 | **built** |
 
 `client/` and `server/` still hold the original plain-JS demo, kept as a
 reference against the port. `src/llm/` and `src/mcp/` supersede them.
@@ -70,6 +72,9 @@ npm run execute -- "<goal>"       # plan, then run it with stubbed agents
 npm run serve                     # MCP server on :3001
 npm run replay -- <runId>         # rebuild a finished run from disk
 npm run replay                    # list runs on disk
+npm run eval                      # 15 golden scenarios x 3, fixture replay
+npm run eval:live                 # against the real model (quota-limited)
+npm run eval:record               # re-record golden fixtures
 
 PLANNER_MODE=fixture npm run execute -- "post a summary of today's top HN story to Twitter"
 PLANNER_MODE=fixture FAIL_TASK=fetch_story_content npm run execute -- "post a summary of today's top HN story to Twitter"
@@ -198,6 +203,23 @@ task's id (or its result is silently discarded and the work redone) and must
 not reuse the failed task's id (or the replayed `task_failed` event marks the
 alternate route failed the moment it is added). Both are validated and fed
 back to the model as specific corrections.
+
+**The evaluation harness measures what the system decides, not what a stub
+returns.** Tool execution is stubbed, so scoring tool calls would score the
+stub. Scenarios declare `expectedCapabilities` and precision/recall are scored
+on routing, which is a real decision the system makes.
+
+**Golden fixtures are recorded model output.** A hand-written set would test
+the harness against an author's idea of what the planner does — the exact
+thing the harness exists to find out.
+
+**Variance is reported as unmeasurable under fixture replay**, rather than as
+zero. Every repeat is identical by construction there, so a stability figure
+would describe the replay rather than the model. Only live mode can observe it.
+
+**A run's signature excludes task ids.** Repeated live runs of one goal produce
+identical structure under different names; keying variance on ids would report
+noise as instability.
 
 **Plan revisions are append-only.** A replan appends a revision rather than
 mutating the last one, so the run record shows what changed and why.

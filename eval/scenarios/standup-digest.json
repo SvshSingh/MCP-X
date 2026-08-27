@@ -1,0 +1,12 @@
+{
+  "id": "standup-digest",
+  "goal": "gather yesterday's commits and open issues, summarise them, and post the standup digest",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 8
+}

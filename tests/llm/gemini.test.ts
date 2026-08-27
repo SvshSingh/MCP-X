@@ -9,7 +9,7 @@ vi.mock("@google/genai", () => ({
   },
 }));
 
-const { GeminiClient, isRetryable, statusOf } = await import("@llm/gemini");
+const { GeminiClient, isRetryable, statusOf, isDailyQuotaExhausted } = await import("@llm/gemini");
 const { LlmError } = await import("@llm/types");
 
 const ok = (text: string, tokensIn = 10, tokensOut = 5) => ({
@@ -84,6 +84,34 @@ describe("isRetryable", () => {
 
   it("does not retry an unrecognised error", () => {
     expect(isRetryable(new Error("something odd"))).toBe(false);
+  });
+
+  it("does not retry a per-day quota exhaustion, despite it being a 429", () => {
+    // Observed against the real API: the free tier caps at 20 requests per day
+    // per model. No backoff this side of tomorrow clears it, so the three
+    // attempts the retry loop would spend are pure waste.
+    const quota = Object.assign(
+      new Error(
+        '{"error":{"code":429,"message":"Quota exceeded for metric: generate_content_free_tier_requests, limit: 20","status":"RESOURCE_EXHAUSTED"}}',
+      ),
+      { status: 429 },
+    );
+
+    expect(isDailyQuotaExhausted(quota)).toBe(true);
+    expect(isRetryable(quota)).toBe(false);
+  });
+
+  it("still retries an ordinary per-minute rate limit", () => {
+    const perMinute = Object.assign(new Error("429 Too Many Requests"), { status: 429 });
+
+    expect(isDailyQuotaExhausted(perMinute)).toBe(false);
+    expect(isRetryable(perMinute)).toBe(true);
+  });
+
+  it("does not treat a non-429 mentioning quota as exhausted", () => {
+    expect(isDailyQuotaExhausted(Object.assign(new Error("per day"), { status: 500 }))).toBe(
+      false,
+    );
   });
 });
 

@@ -1,0 +1,12 @@
+{
+  "id": "compliance-check",
+  "goal": "validate this week's shipment records against compliance rules and report any breaches",
+  "expectedCapabilities": [
+    "research",
+    "compute",
+    "publish"
+  ],
+  "terminalCapability": "publish",
+  "optimalSteps": 4,
+  "maxSteps": 8
+}

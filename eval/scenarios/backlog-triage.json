@@ -1,0 +1,11 @@
+{
+  "id": "backlog-triage",
+  "goal": "read the open bug reports and rank them by severity and age",
+  "expectedCapabilities": [
+    "research",
+    "compute"
+  ],
+  "terminalCapability": "compute",
+  "optimalSteps": 3,
+  "maxSteps": 6
+}
