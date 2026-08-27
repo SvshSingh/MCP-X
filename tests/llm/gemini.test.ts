@@ -148,6 +148,32 @@ describe("GeminiClient", () => {
     expect(generateContent).toHaveBeenCalledTimes(1);
   });
 
+  it("reports the attempts actually made, not the cap", async () => {
+    // A retired model returns 404. Claiming three attempts when one was made
+    // sends you hunting for a retry bug that does not exist.
+    generateContent.mockRejectedValue(withStatus(404));
+
+    try {
+      await client({ maxAttempts: 3 }).generate({ prompt: "hi" });
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      expect((error as InstanceType<typeof LlmError>).attempts).toBe(1);
+      expect((error as Error).message).toContain("after 1 attempt(s)");
+    }
+    expect(generateContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts every attempt when all of them retry", async () => {
+    generateContent.mockRejectedValue(withStatus(503));
+
+    try {
+      await client({ maxAttempts: 2 }).generate({ prompt: "hi" });
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      expect((error as Error).message).toContain("after 2 attempt(s)");
+    }
+  });
+
   it("gives up after maxAttempts and reports the status", async () => {
     generateContent.mockRejectedValue(withStatus(429));
 
