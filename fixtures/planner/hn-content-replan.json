@@ -1,0 +1,7 @@
+{
+  "goal": "replan after fetch_story_content fails",
+  "match": "Failed and unusable: fetch_story_content",
+  "response": "{\"reason\":\"The article URL could not be fetched directly, so the alternate route reads the cached copy instead.\",\"tasks\":[{\"id\":\"fetch_top_story\",\"description\":\"Fetch the current top story from the Hacker News front page.\",\"agentHint\":\"research\",\"dependsOn\":[]},{\"id\":\"fetch_story_comments\",\"description\":\"Retrieve the top comments on the Hacker News discussion thread.\",\"agentHint\":\"research\",\"dependsOn\":[\"fetch_top_story\"]},{\"id\":\"fetch_story_from_cache\",\"description\":\"Retrieve the article text from the archive cache instead of the origin.\",\"agentHint\":\"research\",\"dependsOn\":[\"fetch_top_story\"]},{\"id\":\"summarise_story_v2\",\"description\":\"Write a concise summary from the cached article and the discussion.\",\"agentHint\":\"compute\",\"dependsOn\":[\"fetch_story_from_cache\",\"fetch_story_comments\"]},{\"id\":\"compose_tweet_v2\",\"description\":\"Condense the summary into a single tweet under 280 characters.\",\"agentHint\":\"compute\",\"dependsOn\":[\"summarise_story_v2\"]},{\"id\":\"publish_tweet_v2\",\"description\":\"Post the composed tweet to Twitter.\",\"agentHint\":\"publish\",\"dependsOn\":[\"compose_tweet_v2\"]}]}",
+  "tokensIn": 520,
+  "tokensOut": 240
+}

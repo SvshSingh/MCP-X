@@ -66,6 +66,47 @@ describe("FixtureLlmClient", () => {
     expect(result.text).toBe("LONG");
   });
 
+  it("prefers an explicit match over a longer goal", async () => {
+    // The replanner restates the goal in its prompt, so length alone would let
+    // a long goal capture every replan fixture keyed on a shorter marker.
+    const client = new FixtureLlmClient([
+      fixture({ goal: "post a summary of today's top HN story to Twitter", response: "PLAN" }),
+      fixture({
+        goal: "replan after failure",
+        match: "Failed and unusable: fetch_content",
+        response: "REPLAN",
+      }),
+    ]);
+
+    const planned = await client.generate({
+      prompt: "Goal: post a summary of today's top HN story to Twitter",
+    });
+    const replanned = await client.generate({
+      prompt:
+        "Goal: post a summary of today's top HN story to Twitter\n\nFailed and unusable: fetch_content",
+    });
+
+    expect(planned.text).toBe("PLAN");
+    expect(replanned.text).toBe("REPLAN");
+  });
+
+  it("falls back to the goal when no match is given", async () => {
+    const client = new FixtureLlmClient([fixture({ goal: "ship it", response: "OK" })]);
+
+    expect((await client.generate({ prompt: "Goal: ship it" })).text).toBe("OK");
+  });
+
+  it("orders two explicit matches by length", async () => {
+    const client = new FixtureLlmClient([
+      fixture({ goal: "a", match: "failed", response: "SHORT" }),
+      fixture({ goal: "b", match: "failed and unusable", response: "LONG" }),
+    ]);
+
+    const result = await client.generate({ prompt: "x failed and unusable y" });
+
+    expect(result.text).toBe("LONG");
+  });
+
   it("returns responses in order and repeats the last", async () => {
     const client = new FixtureLlmClient([
       fixture({ goal: "g", response: undefined, responses: ["first", "second"] }),
