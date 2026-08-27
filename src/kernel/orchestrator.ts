@@ -81,7 +81,9 @@ export interface OrchestratorOptions {
    * Repairs the plan after a terminal task failure. Omit to disable
    * replanning, in which case a failure blocks its subtree and the run ends.
    */
-  replan?: (context: ReplanContext) => Promise<{ plan: Plan; reason: string }>;
+  replan?: (
+    context: ReplanContext,
+  ) => Promise<{ plan: Plan; reason: string; tokensIn?: number; tokensOut?: number }>;
   /**
    * Hard cap on repairs per run. The bound is the point: without it, a goal
    * that cannot be reached would produce plans forever.
@@ -124,6 +126,12 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
   const revisions: Plan[] = [options.plan];
   let plan = options.plan;
   let replansUsed = 0;
+  // Repair attempts cost real tokens whether or not they succeed at producing
+  // a usable plan. Tracked separately from task and priorUsage tokens so it
+  // can be folded into totalTokens below rather than silently dropped, which
+  // is the same class of gap Phase 5 closed for the planner's own tokens.
+  let replanTokensIn = 0;
+  let replanTokensOut = 0;
 
   const emit = (event: Parameters<Blackboard["append"]>[0]): void => {
     const appended = board.append(event);
@@ -167,6 +175,8 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
       }
 
       replansUsed++;
+      replanTokensIn += repaired.tokensIn ?? 0;
+      replanTokensOut += repaired.tokensOut ?? 0;
       emit({
         type: "replan",
         fromRevision: plan.revision,
@@ -276,8 +286,8 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
     planRevisions: revisions,
     events: [...board.events],
     totalTokens: {
-      in: finalState.tokensIn + (options.priorUsage?.in ?? 0),
-      out: finalState.tokensOut + (options.priorUsage?.out ?? 0),
+      in: finalState.tokensIn + (options.priorUsage?.in ?? 0) + replanTokensIn,
+      out: finalState.tokensOut + (options.priorUsage?.out ?? 0) + replanTokensOut,
     },
     costUsd: 0,
     ...(finalOutput === "" ? {} : { finalOutput }),
