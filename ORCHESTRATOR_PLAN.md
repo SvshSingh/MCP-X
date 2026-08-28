@@ -399,6 +399,92 @@ failure before a plan even exists is still attributable.
 
 ---
 
+## Closing the classifier gap Phase 8 left open
+
+Phase 8 documented three scenarios failing on the keyword classifier and deferred them. Working
+the problem properly moved the suite from **12/15 to 14/15** and produced a more useful result
+than the number alone: two attempted fixes were tried and **reverted** after each was disproved,
+which is what the remaining failure now documents.
+
+### The planner was inventing side effects
+
+The padding fix in Phase 8 stopped the planner over-decomposing, but not over-*reaching*: for
+goals that only asked for analysis it still appended a delivery step nobody requested —
+`publish_ranked_list` for "rank them by severity", `publish_department_summary` for "calculate
+the total per department". That is worse than a metric problem. **An orchestrator that invents a
+publishing step is inventing a side effect**, and the whole point of the specialist split is that
+side effects are deliberate. The planner prompt now states that a goal asking to compare, rank,
+calculate, audit, validate or summarise is finished once that analysis exists, and that returning
+the answer to the user is explicitly *not* a publishing step.
+
+Effect, measured: `add-two-numbers` went from 2 tasks to **1**, and `expense-summary` and
+`compare-suppliers` stopped emitting phantom publish steps.
+
+### Two bugs were cancelling each other out
+
+Before this, four *passing* scenarios passed for the wrong reason. The planner added a spurious
+`publish_*` task, and the classifier then mis-routed it to `compute` — which happened to match
+the expectation. Fixing only the classifier would have *dropped* the suite to 9/15 by exposing
+the planner over-reach underneath, which is exactly what a diagnostic run confirmed before any
+fix was committed.
+
+### Two tie-break rules, both tried, both reverted
+
+Six of nine routing disagreements were exact score ties, resolved by whichever agent happened to
+be registered first.
+
+*Rejected: break ties toward the side-effecting agent.* Defensible in the abstract — a task that
+both drafts and sends must route to whoever owns sending. But the existing labelled set contains
+"Check that the post arrived", which ties research against publish because "post" appears as a
+**noun**. That rule would hand `createPost` to a task that only reads. Withholding a capability
+makes a task fail visibly; granting one it should not have fails silently, so the safe tie-break
+is toward *lower* privilege — which is what registry order already does. Reverted, and the
+reasoning is now a comment in `classifier.ts` so it is not re-attempted.
+
+*Rejected: treat the task id's leading token as the primary verb.* Works for
+`publish_newsletter`, breaks on `post_process_results`, where "post" leads a compound verb and
+the rule again grants publish rights to compute work. Same unsafe direction. Not adopted.
+
+### What was actually changed
+
+- **Plural keyword matching.** Whole-word matching meant "email" missed "notification emails"
+  and "alert" missed "price alerts" — a task routed differently for writing its noun in the
+  plural. Only the regular `+s`/`+es` forms; this is not a stemmer.
+- **Four genuinely missing verbs**: `cross-reference` and `reconcile` (analysis, were scoring as
+  research), `list` and `tabulate` (were scoring **zero** everywhere, so `list_discrepancies`
+  fell through to the default agent), and `distribute` (delivery).
+
+### One scenario expectation was corrected, deliberately
+
+`compliance-check` expected `research → compute → publish` for the goal *"validate this week's
+shipment records against compliance rules and report any breaches"*. It now expects
+`research → compute`.
+
+This is a changed goalpost, so the reasoning is stated rather than buried: every other
+publish-terminal scenario names a recipient — "email the customers", "alert the team", "publish
+the newsletter". "Report any breaches" names none, so under the project's own rule that returning
+the answer to the user is not a publishing step, the goal ends at analysis. The original
+expectation was written in Phase 7 against padding-era output and encoded that behaviour as
+correct.
+
+### What still fails, and why it is left alone
+
+`newsletter-curation`'s last task is *"Format the summaries into a newsletter and publish it to
+the designated platform"* — one sentence that genuinely does both, scoring `format` (compute) and
+`publish` (publish) exactly 1–1. Bag-of-words scoring has no way to resolve that, and both
+principled tie-breaks were disproved above. This is the **documented ceiling of deterministic
+keyword routing**, which is precisely why the LLM classifier exists; the suite disables it by
+default only because it costs one call per task against a 20-per-day free tier.
+
+The CI floor is raised from 80% to **93%** to lock in the gain, so the two scenarios recovered
+here cannot silently regress.
+
+**Fixtures re-recorded** against the corrected prompt — all 15 on `gemini-3.1-flash-lite` this
+time, which makes the golden set *more* internally consistent than the previous 13/2 split across
+two models. 407 tests, 98.7% statements.
+
+---
+
 ### Phase 9 — Domain reskin + README (½ day) — *optional, high payoff for TraceLink*
 - [ ] Swap the demo tools to a supply-chain flavoured toy workflow:
       `check_inventory → compute_reorder_qty → validate_compliance → notify_supplier`
