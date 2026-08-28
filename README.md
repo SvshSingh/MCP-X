@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="https://github.com/SvshSingh/MCP-X/actions/workflows/ci.yml"><img src="https://github.com/SvshSingh/MCP-X/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/tests-391%20passing-brightgreen" alt="391 tests passing">
+  <img src="https://img.shields.io/badge/tests-407%20passing-brightgreen" alt="407 tests passing">
   <img src="https://img.shields.io/badge/coverage-98.7%25-brightgreen" alt="98.7% statement coverage">
   <img src="https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white" alt="Node 20+">
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript strict">
@@ -92,7 +92,7 @@ git clone https://github.com/SvshSingh/MCP-X.git
 cd MCP-X
 npm install
 cp .env.example .env          # PLANNER_MODE=fixture needs no key at all
-npm test                      # 391 tests, no network, no API key
+npm test                      # 407 tests, no network, no API key
 ```
 
 To see it plan and execute a goal without any credentials:
@@ -118,7 +118,7 @@ npm run replay                    # list runs on disk
 npm run serve                     # MCP server over SSE, on :3001
 npm run eval                      # 15 golden scenarios x 3 runs, fixture replay (what CI runs)
 npm run eval:live                 # against the real model (quota-limited, see below)
-npm test                          # 391 tests
+npm test                          # 407 tests
 npm run coverage                  # tests + coverage report
 ```
 
@@ -130,31 +130,35 @@ key, no network — this is exactly what `npm test` and CI exercise):
 ```
 $ PLANNER_MODE=fixture npm run execute -- "post a summary of today's top HN story to Twitter"
 
-Plan: 6 tasks in 5 wave(s)
-  wave 1: fetch_top_story
-  wave 2: fetch_story_content, fetch_story_comments  <- 2 in parallel
-  wave 3: summarise_story
-  wave 4: compose_tweet
-  wave 5: publish_tweet
+[run-mtdiq2in] Plan: 6 tasks in 5 wave(s)
+[run-mtdiq2in]   wave 1: fetch_top_story
+[run-mtdiq2in]   wave 2: fetch_story_content, fetch_story_comments  <- 2 in parallel
+[run-mtdiq2in]   wave 3: summarise_story
+[run-mtdiq2in]   wave 4: compose_tweet
+[run-mtdiq2in]   wave 5: publish_tweet
 
-  -> fetch_top_story [research] attempt 1
-  -> fetch_story_content [research] attempt 1
-  -> fetch_story_comments [research] attempt 1
-  -> summarise_story [compute] attempt 1
-  -> compose_tweet [compute] attempt 1
-  -> publish_tweet [publish] attempt 1
+[run-mtdiq2in]   -> fetch_top_story [research] attempt 1
+[run-mtdiq2in]   -> fetch_story_content [research] attempt 1
+[run-mtdiq2in]   -> fetch_story_comments [research] attempt 1
+[run-mtdiq2in]   -> summarise_story [compute] attempt 1
+[run-mtdiq2in]   -> compose_tweet [compute] attempt 1
+[run-mtdiq2in]   -> publish_tweet [publish] attempt 1
 
-Result:
-  OK    fetch_top_story
-  OK    fetch_story_content
-  OK    fetch_story_comments
-  OK    summarise_story
-  OK    compose_tweet
-  OK    publish_tweet
+[run-mtdiq2in] Result:
+[run-mtdiq2in]   OK    fetch_top_story
+[run-mtdiq2in]   OK    fetch_story_content
+[run-mtdiq2in]   OK    fetch_story_comments
+[run-mtdiq2in]   OK    summarise_story
+[run-mtdiq2in]   OK    compose_tweet
+[run-mtdiq2in]   OK    publish_tweet
 
-Run run-mtbuso77: succeeded in 245ms, 14 events, 652 in / 337 out (412/187 planning) unpriced
-Saved to runs\run-mtbuso77.jsonl   replay with: npm run replay -- run-mtbuso77
+[run-mtdiq2in] Run succeeded in 251ms, 14 events, 652 in / 337 out (412/187 planning) unpriced
+[run-mtdiq2in] Saved to runs\run-mtdiq2in.jsonl   replay with: npm run replay -- run-mtdiq2in
 ```
+
+Every line is tagged `[run-mtdiq2in]` — that's the structured logging Phase 8 added, so output
+from two runs interleaved in one terminal or CI job is never ambiguous about which run produced
+which line.
 
 Now force a mid-plan tool failure. Watch the sibling branch complete anyway, the failing task
 retry once, and — because a replanner is wired in — the run repair itself and finish via an
@@ -164,28 +168,28 @@ alternate route instead of ending in a blocked subtree:
 $ FAIL_TASK=fetch_story_content PLANNER_MODE=fixture \
   npm run execute -- "post a summary of today's top HN story to Twitter"
 
-  -> fetch_top_story [research] attempt 1
-  -> fetch_story_content [research] attempt 1
-  -> fetch_story_comments [research] attempt 1
-  -> fetch_story_content [research] attempt 2
+[run-mtdiqfkc]   -> fetch_top_story [research] attempt 1
+[run-mtdiqfkc]   -> fetch_story_content [research] attempt 1
+[run-mtdiqfkc]   -> fetch_story_comments [research] attempt 1
+[run-mtdiqfkc]   -> fetch_story_content [research] attempt 2
 
-  ** replan: revision 0 -> 1 (failure)
-     The article URL could not be fetched directly, so the alternate route reads the cached copy instead.
+[run-mtdiqfkc]   ** replan: revision 0 -> 1 (failure)
+[run-mtdiqfkc]      The article URL could not be fetched directly, so the alternate route reads the cached copy instead.
 
-  -> fetch_story_from_cache [research] attempt 1
-  -> summarise_story_v2 [compute] attempt 1
-  -> compose_tweet_v2 [compute] attempt 1
-  -> publish_tweet_v2 [publish] attempt 1
+[run-mtdiqfkc]   -> fetch_story_from_cache [research] attempt 1
+[run-mtdiqfkc]   -> summarise_story_v2 [compute] attempt 1
+[run-mtdiqfkc]   -> compose_tweet_v2 [compute] attempt 1
+[run-mtdiqfkc]   -> publish_tweet_v2 [publish] attempt 1
 
-Result (revision 1 of 1):
-  OK    fetch_top_story
-  OK    fetch_story_comments
-  OK    fetch_story_from_cache
-  OK    summarise_story_v2
-  OK    compose_tweet_v2
-  OK    publish_tweet_v2
+[run-mtdiqfkc] Result (revision 1 of 1):
+[run-mtdiqfkc]   OK    fetch_top_story
+[run-mtdiqfkc]   OK    fetch_story_comments
+[run-mtdiqfkc]   OK    fetch_story_from_cache
+[run-mtdiqfkc]   OK    summarise_story_v2
+[run-mtdiqfkc]   OK    compose_tweet_v2
+[run-mtdiqfkc]   OK    publish_tweet_v2
 
-Run run-mtbuspfq: succeeded in 339ms, 19 events, 1172 in / 577 out (932/427 planning) unpriced
+[run-mtdiqfkc] Run succeeded in 362ms, 19 events, 1172 in / 577 out (932/427 planning) unpriced
 ```
 
 `fetch_top_story` and `fetch_story_comments` were **not** re-executed after the repair — their
@@ -206,57 +210,76 @@ Current result, regenerated from this commit:
 
 | Metric | Value |
 |---|---|
-| Scenario pass rate | **14/15 (93%)** |
+| Scenario pass rate | **12/15 (80%)** |
 | Task completion rate | 100% |
 | Plan validity (valid DAG, first try) | 100% |
-| Capability F1 | 0.98 |
-| Step efficiency | 0.77 |
-| Tokens (fixture replay) | 14,556 in / 12,768 out |
+| Capability F1 | 0.96 |
+| Step efficiency | 0.95 |
+| Tokens (fixture replay) | 17,166 in / 9,948 out |
 
-**The one failure is real, and it's a bug in this project's own planner prompt, not the
-model.** For *"add 2 and 3 and tell me the answer"*, the planner produces three tasks — including
-a `research` step to fetch the numbers that were already in the prompt:
+### The harness has now found two real bugs, in two different modules
 
-```
-extract_operands [research]: Extract the numerical operands 2 and 3 from the prompt.
-calculate_sum    [compute]:  Add the numbers 2 and 3 together to obtain the sum.
-report_result    [publish]:  Format and deliver the calculated sum to the user.
-```
+**Round one: the planner padded trivial goals.** For *"add 2 and 3 and tell me the answer"*, an
+earlier version of the planner produced three tasks, inventing a `research` step to fetch
+numbers already in the prompt — because its system prompt said `"Prefer 3 to 8 tasks"`, and the
+model was simply obeying it. Reproduced under two different Gemini models, which is what ruled
+out the model and implicated the instruction. **Fixed**: the floor is gone, replaced with an
+instruction to use as few tasks as the goal genuinely needs. `add-two-numbers` now plans as 2
+tasks and passes.
 
-The root cause is a single line in the planner's system prompt — `"Prefer 3 to 8 tasks"` — and
-the model is simply obeying it. The same padding reproduces under two different Gemini models,
-which is what rules out the model and implicates the instruction. **It's left unfixed on
-purpose**: correcting the prompt invalidates the 15 recorded golden fixtures, and re-recording
-needs API quota this project has already spent for the day (see below). It's tracked as the
-first item of the next phase rather than silently patched around.
+**Round two: fixing that surfaced a different, unrelated gap.** All 15 golden fixtures were
+re-recorded against the corrected prompt, and three *new* scenarios started failing —
+`compare-suppliers`, `compliance-check`, `shipment-eta-notify`. Tracing it by running the
+classifier directly against the exact task descriptions the fixed prompt now produces: it's not
+the planner this time, it's the keyword classifier's vocabulary. `"Cross-reference the records
+against the compliance rules to identify any breaches"` routes to `research` — because
+`"identify"` is a research keyword and no compute keyword matches `"cross-reference"`.
+`"Generate and distribute a compliance report"` routes to `compute` — `"generate"` is a compute
+keyword, and neither `"distribute"` nor `"report"` is in the publish vocabulary. **Left
+unfixed, on purpose, for the same reason as round one**: it's a distinct, separately-scoped
+problem, tracked rather than chased into an open-ended tuning pass in the same sitting.
 
-A harness that reports 15/15 on its first run is usually a harness that can't find anything.
-This one found something, in the first thing it was pointed at.
+Two bugs, two different root causes, both diagnosed by tracing the actual generated output
+through the actual routing code rather than guessing — that's a stronger result than a clean
+15/15 would have been, and it's why the number below moved from 14 to 12 between one commit and
+the next instead of climbing to a tidy 15.
 
 <details>
 <summary>Full per-scenario table (fixture replay)</summary>
 
 | Scenario | Result | Complete | Valid DAG | Recall | Precision | Steps | Efficiency |
 |---|---|---|---|---|---|---|---|
-| `add-two-numbers` | **FAIL** | 100% | 100% | 100% | 50% | 3.0 / 3 | 0.33 |
-| `backlog-triage` | pass | 100% | 100% | 100% | 100% | 5.0 / 6 | 0.60 |
-| `compare-suppliers` | pass | 100% | 100% | 100% | 100% | 6.0 / 7 | 0.50 |
-| `compliance-check` | pass | 100% | 100% | 100% | 100% | 5.0 / 8 | 0.80 |
-| `expense-summary` | pass | 100% | 100% | 100% | 100% | 4.0 / 6 | 0.75 |
-| `hn-summary-to-twitter` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
-| `incident-postmortem` | pass | 100% | 100% | 100% | 100% | 5.0 / 9 | 0.80 |
+| `add-two-numbers` | pass | 100% | 100% | 100% | 100% | 2.0 / 3 | 0.50 |
+| `backlog-triage` | pass | 100% | 100% | 100% | 100% | 3.0 / 6 | 1.00 |
+| `compare-suppliers` | **FAIL** | 100% | 100% | 100% | 67% | 3.0 / 7 | 1.00 |
+| `compliance-check` | **FAIL** | 100% | 100% | 67% | 100% | 4.0 / 8 | 1.00 |
+| `expense-summary` | pass | 100% | 100% | 100% | 100% | 3.0 / 6 | 1.00 |
+| `hn-summary-to-twitter` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 |
+| `incident-postmortem` | pass | 100% | 100% | 100% | 100% | 4.0 / 9 | 1.00 |
 | `inventory-audit` | pass | 100% | 100% | 100% | 100% | 4.0 / 7 | 0.75 |
-| `newsletter-curation` | pass | 100% | 100% | 100% | 100% | 5.0 / 9 | 0.80 |
-| `price-monitor-alert` | pass | 100% | 100% | 100% | 100% | 5.0 / 8 | 0.80 |
-| `release-announcement` | pass | 100% | 100% | 100% | 100% | 5.0 / 8 | 0.80 |
-| `shipment-eta-notify` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
+| `newsletter-curation` | pass | 100% | 100% | 100% | 100% | 4.0 / 9 | 1.00 |
+| `price-monitor-alert` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
+| `release-announcement` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
+| `shipment-eta-notify` | **FAIL** | 100% | 100% | 67% | 100% | 3.0 / 8 | 1.00 |
 | `standup-digest` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
-| `supplier-scorecard` | pass | 100% | 100% | 100% | 100% | 5.0 / 7 | 0.60 |
-| `warehouse-restock` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
+| `supplier-scorecard` | pass | 100% | 100% | 100% | 100% | 3.0 / 7 | 1.00 |
+| `warehouse-restock` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 |
 
 Regenerate this table yourself: `npm run eval` writes it to `eval/report.md`.
 
 </details>
+
+### CI gates on a floor, not on 15/15
+
+`npm run eval` runs in CI on every push and pull request. It gates on the suite's pass rate
+staying at or above **80%** — today's exact result — not on every scenario passing. Demanding
+100% would leave the build permanently red for the tracked classifier gap above and turn the CI
+badge at the top of this file into a lie. The floor still does the one thing that matters: a
+change that further degrades planning or routing drops the rate below 80% and turns CI red,
+while a change that doesn't regress anything never will. That claim isn't just asserted — there's
+a test that builds a synthetic two-scenario suite, shows it passing at the default floor, then
+shows the identical result failing once the floor is raised to 100%, so "it passes" isn't a
+tautology.
 
 ### Why variance is reported as "unmeasurable," not "zero"
 
@@ -342,14 +365,19 @@ MCP-X/
 ```bash
 npm run typecheck   # tsc --noEmit, strict mode
 npm run lint        # ESLint 9, typescript-eslint
-npm test            # 391 tests, zero network calls, zero API keys required
+npm test            # 407 tests, zero network calls, zero API keys required
 npm run coverage    # v8 coverage; core modules held to an 85% floor that fails the build
+npm run eval        # 15 golden scenarios; fails the build below an 80% pass-rate floor
 ```
 
-All four run on every push and pull request. The coverage threshold **fails the build**, not
-just reports it, on the kernel, agents, LLM boundary, observability, and evaluation modules —
-it's currently at 98.7% statements / 92.4% branches against an 85% floor, which is headroom
-rather than the target.
+All five run on every push and pull request. Both gates **fail the build**, not just report it:
+coverage is currently at 98.7% statements / 93.0% branches against an 85% floor (headroom, not
+the target); the eval pass rate is pinned exactly to today's honest 80% result, so it catches a
+future regression without demanding a perfection this project doesn't currently have.
+
+Every line `npm run execute` prints is tagged `[runId]`, generated before anything else can
+print — so a failure before a plan even exists is still attributable, and output from two
+concurrent runs never gets silently interleaved into one anonymous stream.
 
 ## Tech stack
 
@@ -361,12 +389,12 @@ Vitest for testing, GitHub Actions for CI.
 
 Tracked in detail in [`ORCHESTRATOR_PLAN.md`](ORCHESTRATOR_PLAN.md):
 
-- Fix the planner's task-count floor that's currently padding trivial goals, and re-record the
-  golden fixtures against the corrected prompt.
-- Gate CI on the evaluation harness itself, so a change that degrades planning or routing turns
-  the build red, not just the local report.
+- Close the classifier's keyword-coverage gap the fixed planner prompt surfaced — the three
+  scenarios currently failing on capability precision/recall (`compare-suppliers`,
+  `compliance-check`, `shipment-eta-notify`).
 - Wire specialist agents to real tool execution end-to-end, rather than the current stubbed
   runner used to isolate orchestration from tool-call variance during evaluation.
+- The optional domain reskin: swap the demo tools for a supply-chain-flavoured toy workflow.
 
 ## Origin
 

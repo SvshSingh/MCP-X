@@ -28,6 +28,7 @@ import { llmReplanner } from "../kernel/replanner.js";
 import { executionWaves } from "../kernel/scheduler.js";
 import type { Event, Plan } from "../kernel/schemas.js";
 import { formatCost, priceRun, ratesFromEnv } from "../observability/cost.js";
+import { createRunLogger, type RunLogger } from "../observability/log.js";
 import { DEFAULT_RUN_DIR, RunLogWriter } from "../observability/runlog.js";
 
 const STATUS_MARK: Record<string, string> = {
@@ -68,13 +69,13 @@ function specialistRunner(failTask: string | undefined): AgentRunner {
   };
 }
 
-function printWaves(plan: Plan): void {
+function printWaves(log: RunLogger, plan: Plan): void {
   const waves = executionWaves(plan);
-  console.log(`Plan: ${plan.tasks.length} tasks in ${waves.length} wave(s)`);
+  log.info(`Plan: ${plan.tasks.length} tasks in ${waves.length} wave(s)`);
 
   waves.forEach((wave, index) => {
     const parallel = wave.length > 1 ? `  <- ${wave.length} in parallel` : "";
-    console.log(`  wave ${index + 1}: ${wave.map((t) => t.id).join(", ")}${parallel}`);
+    log.info(`  wave ${index + 1}: ${wave.map((t) => t.id).join(", ")}${parallel}`);
   });
 }
 
@@ -85,17 +86,24 @@ async function main(): Promise<number> {
     return 2;
   }
 
+  // Generated before anything else can print, so every line this invocation
+  // produces -- including a failure before a plan exists -- carries the same
+  // tag. Two runs' output interleaved in one terminal or CI job is otherwise
+  // unattributable without parsing message text.
+  const runId = `run-${Date.now().toString(36)}`;
+  const log = createRunLogger(runId);
+
   let llm;
   try {
     llm = createLlmClient();
   } catch (error) {
-    console.error(error instanceof LlmError ? error.message : String(error));
+    log.error(error instanceof LlmError ? error.message : String(error));
     return 1;
   }
 
-  console.log(`Goal:    ${goal}`);
-  console.log(`Planner: ${llm.name}`);
-  console.log();
+  log.info(`Goal:    ${goal}`);
+  log.info(`Planner: ${llm.name}`);
+  log.blank();
 
   let plan: Plan;
   let planningUsage = { in: 0, out: 0 };
@@ -105,15 +113,15 @@ async function main(): Promise<number> {
     // The planner's spend is real and belongs in the run's totals.
     planningUsage = { in: planned.tokensIn, out: planned.tokensOut };
   } catch (error) {
-    console.error(error instanceof PlannerError ? error.message : String(error));
+    log.error(error instanceof PlannerError ? error.message : String(error));
     return 1;
   }
 
-  printWaves(plan);
-  console.log();
+  printWaves(log, plan);
+  log.blank();
 
   const failTask = process.env["FAIL_TASK"];
-  if (failTask !== undefined) console.log(`Forcing failure in: ${failTask}\n`);
+  if (failTask !== undefined) log.info(`Forcing failure in: ${failTask}`);
 
   // Routing uses the model when one is available, and falls back to
   // deterministic keyword scoring otherwise. `ROUTE=keyword` forces the
@@ -126,7 +134,6 @@ async function main(): Promise<number> {
   // mid-flight is exactly the one worth inspecting, and a write-at-the-end
   // format would leave nothing behind.
   const runDir = process.env["RUN_DIR"] ?? DEFAULT_RUN_DIR;
-  const runId = `run-${Date.now().toString(36)}`;
   const startedAt = new Date().toISOString();
   const writer = new RunLogWriter(runId, runDir);
 
@@ -148,11 +155,9 @@ async function main(): Promise<number> {
     maxReplans: Number.isInteger(maxReplans) && maxReplans >= 0 ? maxReplans : DEFAULT_MAX_REPLANS,
     replan: llmReplanner({ llm }),
     onReplanError: (error) => {
-      console.log();
-      console.log(
-        `  ** replan unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      console.log();
+      log.blank();
+      log.info(`  ** replan unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      log.blank();
     },
     onPlanRevision: (revision) => {
       writer.write({ kind: "plan", plan: revision });
@@ -176,15 +181,13 @@ async function main(): Promise<number> {
       };
 
       if (e.type === "task_started") {
-        console.log(`  -> ${e.taskId} [${e.agent}] attempt ${e.attempt}`);
+        log.info(`  -> ${e.taskId} [${e.agent}] attempt ${e.attempt}`);
       }
       if (e.type === "replan") {
-        console.log();
-        console.log(
-          `  ** replan: revision ${e.fromRevision} -> ${e.toRevision} (${e.taskId ?? "failure"})`,
-        );
-        console.log(`     ${e.reason}`);
-        console.log();
+        log.blank();
+        log.info(`  ** replan: revision ${e.fromRevision} -> ${e.toRevision} (${e.taskId ?? "failure"})`);
+        log.info(`     ${e.reason}`);
+        log.blank();
       }
     },
   });
@@ -204,42 +207,38 @@ async function main(): Promise<number> {
   // After a replan the executed plan is the last revision, not the first.
   const finalPlan = outcome.record.planRevisions.at(-1) ?? plan;
 
-  console.log();
+  log.blank();
   if (outcome.record.planRevisions.length > 1) {
-    console.log(
-      `Result (revision ${finalPlan.revision} of ${outcome.record.planRevisions.length - 1}):`,
-    );
+    log.info(`Result (revision ${finalPlan.revision} of ${outcome.record.planRevisions.length - 1}):`);
   } else {
-    console.log("Result:");
+    log.info("Result:");
   }
 
   for (const task of finalPlan.tasks) {
     const state = outcome.state.tasks.get(task.id);
     const mark = STATUS_MARK[state?.status ?? "pending"] ?? "????";
     const reason = state?.error === undefined ? "" : `  (${state.error})`;
-    console.log(`  ${mark}  ${task.id}${reason}`);
+    log.info(`  ${mark}  ${task.id}${reason}`);
   }
 
   const blocked = blockedByFailures(finalPlan, outcome.state);
   if (blocked.size > 0) {
-    console.log();
+    log.blank();
     for (const [failedId, downstream] of blocked) {
-      console.log(
-        `  "${failedId}" failed, blocking ${downstream.length}: ${downstream.join(", ")}`,
-      );
+      log.info(`  "${failedId}" failed, blocking ${downstream.length}: ${downstream.join(", ")}`);
     }
   }
 
   const priced = priceRun(outcome.record, llm.name, ratesFromEnv(llm.name));
 
-  console.log();
-  console.log(
-    `Run ${runId}: ${outcome.ok ? "succeeded" : "failed"} in ${elapsed}ms, ` +
+  log.blank();
+  log.info(
+    `Run ${outcome.ok ? "succeeded" : "failed"} in ${elapsed}ms, ` +
       `${outcome.record.events.length} events, ` +
       `${priced.tokens.in} in / ${priced.tokens.out} out ` +
       `(${priced.overhead.in}/${priced.overhead.out} planning) ${formatCost(priced.cost)}`,
   );
-  console.log(`Saved to ${writer.path}   replay with: npm run replay -- ${runId}`);
+  log.info(`Saved to ${writer.path}   replay with: npm run replay -- ${runId}`);
 
   return outcome.ok ? 0 : 1;
 }

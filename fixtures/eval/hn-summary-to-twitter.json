@@ -1,6 +1,6 @@
 {
   "goal": "post a summary of today's top HN story to Twitter",
-  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_top_hn_story\",\n      \"description\": \"Retrieve the current top story from the Hacker News API.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"fetch_story_content\",\n      \"description\": \"Fetch the content or summary of the linked URL from the top HN story.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": [\"fetch_top_hn_story\"]\n    },\n    {\n      \"id\": \"summarize_content\",\n      \"description\": \"Generate a concise, engaging summary of the story content suitable for Twitter.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"fetch_story_content\"]\n    },\n    {\n      \"id\": \"post_to_twitter\",\n      \"description\": \"Post the generated summary to the Twitter account.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\"summarize_content\"]\n    }\n  ]\n}",
-  "tokensIn": 321,
-  "tokensOut": 241
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_top_hn_story\",\n      \"description\": \"Fetch today's top story from the Hacker News API.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"summarize_story\",\n      \"description\": \"Analyze the content of the top Hacker News story and write a concise summary suitable for a tweet.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_top_hn_story\"\n      ]\n    },\n    {\n      \"id\": \"post_to_twitter\",\n      \"description\": \"Publish the formatted summary of the top Hacker News story to Twitter.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"summarize_story\"\n      ]\n    }\n  ]\n}",
+  "tokensIn": 379,
+  "tokensOut": 202
 }

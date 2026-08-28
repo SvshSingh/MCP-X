@@ -42,7 +42,10 @@ Rules:
 - The graph must be acyclic. A task must never depend on itself, directly or transitively.
 - A task that needs no prerequisite has "dependsOn": [].
 - Tasks that could run at the same time must NOT depend on each other. Express real data dependencies only, not a preferred order.
-- Prefer 3 to 8 tasks. Each should be one unit of work a single agent can perform.
+- Use as few tasks as the goal genuinely needs. A trivial goal may need only one or two; a
+  complex one may need up to 8. Never invent a task — such as a research step to "fetch" a value
+  already given in the goal — merely to pad the count. Each task should be one real unit of work
+  a single agent can perform.
 - agentHint is your best guess at the specialist: "research" gathers information, "compute" transforms or calculates, "publish" writes to the outside world.
 - Output the JSON object and nothing else. No markdown fences, no commentary.`;
 
