@@ -1,6 +1,6 @@
 /** Entry point for `npm run eval` and `npm run eval:live`. */
 
-import { runEval, DEFAULT_REPEATS, REPORT_PATH } from "./runner.js";
+import { runEval, DEFAULT_MIN_PASS_RATE, DEFAULT_REPEATS, REPORT_PATH } from "./runner.js";
 
 const live = process.argv.includes("--live") || process.env["EVAL_MODE"] === "live";
 const repeatsArg = process.env["EVAL_REPEATS"];
@@ -8,10 +8,16 @@ const repeats = repeatsArg === undefined ? DEFAULT_REPEATS : Number(repeatsArg);
 const onlyRaw = process.env["EVAL_ONLY"];
 const only = onlyRaw === undefined ? undefined : onlyRaw.split(",").map((id) => id.trim());
 const llmRouting = process.env["EVAL_ROUTING"] === "llm";
+const minPassRateArg = process.env["EVAL_MIN_PASS_RATE"];
+const minPassRate = minPassRateArg === undefined ? DEFAULT_MIN_PASS_RATE : Number(minPassRateArg);
 
 async function main(): Promise<number> {
   if (!Number.isInteger(repeats) || repeats < 1) {
     console.error(`EVAL_REPEATS must be a positive integer, got "${repeatsArg}"`);
+    return 2;
+  }
+  if (!Number.isFinite(minPassRate) || minPassRate < 0 || minPassRate > 1) {
+    console.error(`EVAL_MIN_PASS_RATE must be a number between 0 and 1, got "${minPassRateArg}"`);
     return 2;
   }
 
@@ -24,10 +30,11 @@ async function main(): Promise<number> {
   }
   console.log();
 
-  const { results, passed } = await runEval({
+  const { results, summary, passed } = await runEval({
     repeats,
     live,
     llmRouting,
+    minPassRate,
     ...(only === undefined ? {} : { only }),
     onProgress: (message) => {
       process.stdout.write(`  ${message}\r`);
@@ -42,10 +49,14 @@ async function main(): Promise<number> {
     console.log(`  ${mark.padEnd(5)} ${scenario.id}${detail}`);
   }
 
-  const failed = results.filter((r) => !r.metrics.pass).length;
   console.log();
+  console.log(`${summary.passed}/${summary.scenarios} scenarios passed. Report written to ${REPORT_PATH}`);
+  // The gate is on the rate meeting a floor, not on every scenario passing --
+  // this line makes that explicit rather than leaving pass/fail unexplained.
   console.log(
-    `${results.length - failed}/${results.length} scenarios passed. Report written to ${REPORT_PATH}`,
+    `Gate: pass rate ${(summary.passRate * 100).toFixed(0)}% ${
+      passed ? ">=" : "<"
+    } ${(minPassRate * 100).toFixed(0)}% floor -> ${passed ? "OK" : "BUILD FAILS"}`,
   );
 
   return passed ? 0 : 1;
