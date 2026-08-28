@@ -1,8 +1,8 @@
 # MCP-X evaluation report
 
-Generated 2026-08-27T16:47:17.143Z · mode `fixture` · planner `fixture` · 15 scenarios × 3 runs · 0.1s
+Generated 2026-08-28T22:25:10.273Z · mode `fixture` · planner `fixture` · 15 scenarios × 3 runs · 0.0s
 
-**14/15 scenarios passed — 1 failed.**
+**12/15 scenarios passed — 3 failed.**
 
 > **Variance was not measured in this run.**
 >
@@ -14,39 +14,54 @@ Generated 2026-08-27T16:47:17.143Z · mode `fixture` · planner `fixture` · 15 
 
 | Metric | Value |
 |---|---|
-| Scenario pass rate | 93% |
+| Scenario pass rate | 80% |
 | Task completion rate | 100% |
 | Plan validity (valid DAG first try) | 100% |
-| Capability F1 | 0.98 |
-| Step efficiency | 0.77 |
+| Capability F1 | 0.96 |
+| Step efficiency | 0.95 |
 | Cross-run stability | not measurable (fixture replay) |
-| Tokens | 14556 in / 12768 out |
+| Tokens | 17166 in / 9948 out |
 
 ## Per scenario
 
 | Scenario | Result | Complete | Valid DAG | Recall | Precision | Steps | Efficiency | Stable |
 |---|---|---|---|---|---|---|---|---|
-| `add-two-numbers` | **FAIL** | 100% | 100% | 100% | 50% | 3.0 / 3 | 0.33 | n/a |
-| `backlog-triage` | pass | 100% | 100% | 100% | 100% | 5.0 / 6 | 0.60 | n/a |
-| `compare-suppliers` | pass | 100% | 100% | 100% | 100% | 6.0 / 7 | 0.50 | n/a |
-| `compliance-check` | pass | 100% | 100% | 100% | 100% | 5.0 / 8 | 0.80 | n/a |
-| `expense-summary` | pass | 100% | 100% | 100% | 100% | 4.0 / 6 | 0.75 | n/a |
-| `hn-summary-to-twitter` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 | n/a |
-| `incident-postmortem` | pass | 100% | 100% | 100% | 100% | 5.0 / 9 | 0.80 | n/a |
+| `add-two-numbers` | pass | 100% | 100% | 100% | 100% | 2.0 / 3 | 0.50 | n/a |
+| `backlog-triage` | pass | 100% | 100% | 100% | 100% | 3.0 / 6 | 1.00 | n/a |
+| `compare-suppliers` | **FAIL** | 100% | 100% | 100% | 67% | 3.0 / 7 | 1.00 | n/a |
+| `compliance-check` | **FAIL** | 100% | 100% | 67% | 100% | 4.0 / 8 | 1.00 | n/a |
+| `expense-summary` | pass | 100% | 100% | 100% | 100% | 3.0 / 6 | 1.00 | n/a |
+| `hn-summary-to-twitter` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 | n/a |
+| `incident-postmortem` | pass | 100% | 100% | 100% | 100% | 4.0 / 9 | 1.00 | n/a |
 | `inventory-audit` | pass | 100% | 100% | 100% | 100% | 4.0 / 7 | 0.75 | n/a |
-| `newsletter-curation` | pass | 100% | 100% | 100% | 100% | 5.0 / 9 | 0.80 | n/a |
-| `price-monitor-alert` | pass | 100% | 100% | 100% | 100% | 5.0 / 8 | 0.80 | n/a |
-| `release-announcement` | pass | 100% | 100% | 100% | 100% | 5.0 / 8 | 0.80 | n/a |
-| `shipment-eta-notify` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 | n/a |
+| `newsletter-curation` | pass | 100% | 100% | 100% | 100% | 4.0 / 9 | 1.00 | n/a |
+| `price-monitor-alert` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 | n/a |
+| `release-announcement` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 | n/a |
+| `shipment-eta-notify` | **FAIL** | 100% | 100% | 67% | 100% | 3.0 / 8 | 1.00 | n/a |
 | `standup-digest` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 | n/a |
-| `supplier-scorecard` | pass | 100% | 100% | 100% | 100% | 5.0 / 7 | 0.60 | n/a |
-| `warehouse-restock` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 | n/a |
+| `supplier-scorecard` | pass | 100% | 100% | 100% | 100% | 3.0 / 7 | 1.00 | n/a |
+| `warehouse-restock` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 | n/a |
 
 ## Failures
 
-### `add-two-numbers`
+### `compare-suppliers`
 
-Goal: add 2 and 3 and tell me the answer
+Goal: compare our three suppliers on lead time and unit price, and rank them
 
-- capability precision 50% (unnecessary work)
+- capability precision 67% (unnecessary work)
+- did not end on compute
+
+### `compliance-check`
+
+Goal: validate this week's shipment records against compliance rules and report any breaches
+
+- capability recall 67%
+- did not end on publish
+
+### `shipment-eta-notify`
+
+Goal: look up the delayed shipments, work out revised delivery dates, and email the customers
+
+- capability recall 67%
+- did not end on publish
 
