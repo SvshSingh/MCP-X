@@ -81,8 +81,8 @@ describe("runEval — against the repo's real golden set", () => {
   });
 
   it("gates on the pass rate meeting the floor, not on every scenario passing", async () => {
-    // Today's honest baseline is 12/15 (documented: three scenarios fail on a
-    // known classifier keyword-coverage gap). The default floor is pinned to
+    // Today's honest baseline is 14/15 (documented: one scenario fails on the
+    // keyword classifier's tie ceiling). The default floor is pinned to
     // exactly that, so this suite must pass today without every scenario
     // passing individually.
     const { summary, passed, minPassRate } = await runEval({
