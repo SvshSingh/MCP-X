@@ -1,6 +1,6 @@
 {
   "goal": "read the open bug reports and rank them by severity and age",
-  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_open_bug_reports\",\n      \"description\": \"Fetch all open bug reports from the issue tracker.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"rank_bug_reports\",\n      \"description\": \"Calculate ranks for the fetched bug reports based on severity and age.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_open_bug_reports\"\n      ]\n    },\n    {\n      \"id\": \"publish_ranked_list\",\n      \"description\": \"Format and publish the ranked list of bug reports.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"rank_bug_reports\"\n      ]\n    }\n  ]\n}",
-  "tokensIn": 379,
-  "tokensOut": 193
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_bug_reports\",\n      \"description\": \"Retrieve the list of open bug reports from the issue tracking system.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"extract_metadata\",\n      \"description\": \"Extract severity levels and creation timestamps for each bug report.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"fetch_bug_reports\"]\n    },\n    {\n      \"id\": \"rank_bugs\",\n      \"description\": \"Rank the bug reports based on a combined metric of severity and age.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"extract_metadata\"]\n    }\n  ]\n}",
+  "tokensIn": 506,
+  "tokensOut": 176
 }

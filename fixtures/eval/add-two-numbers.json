@@ -1,6 +1,6 @@
 {
   "goal": "add 2 and 3 and tell me the answer",
-  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"compute_sum\",\n      \"description\": \"Calculate the sum of 2 and 3.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"publish_answer\",\n      \"description\": \"Output the final sum to the user.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"compute_sum\"\n      ]\n    }\n  ]\n}",
-  "tokensIn": 378,
-  "tokensOut": 116
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"calculate_sum\",\n      \"description\": \"Calculate the sum of 2 and 3.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": []\n    }\n  ]\n}",
+  "tokensIn": 505,
+  "tokensOut": 60
 }

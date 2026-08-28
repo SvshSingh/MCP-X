@@ -1,6 +1,6 @@
 {
   "goal": "compare our three suppliers on lead time and unit price, and rank them",
-  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"collect_supplier_data\",\n      \"description\": \"Gather lead time and unit price data for all three suppliers.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"analyze_and_rank_suppliers\",\n      \"description\": \"Compare lead times and unit prices across suppliers and calculate overall rankings.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"collect_supplier_data\"\n      ]\n    },\n    {\n      \"id\": \"publish_supplier_ranking_report\",\n      \"description\": \"Compile and publish the final comparison report detailing supplier rankings and metrics.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"analyze_and_rank_suppliers\"\n      ]\n    }\n  ]\n}",
-  "tokensIn": 381,
-  "tokensOut": 200
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"gather_supplier_data\",\n      \"description\": \"Retrieve the lead time and unit price data for all three suppliers.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"normalize_and_compare_data\",\n      \"description\": \"Calculate the relative performance of each supplier based on lead time and unit price metrics.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"gather_supplier_data\"]\n    },\n    {\n      \"id\": \"rank_suppliers\",\n      \"description\": \"Rank the three suppliers based on the comparative analysis of lead time and unit price.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"normalize_and_compare_data\"]\n    }\n  ]\n}",
+  "tokensIn": 508,
+  "tokensOut": 191
 }

@@ -1,6 +1,6 @@
 {
   "goal": "look up the delayed shipments, work out revised delivery dates, and email the customers",
-  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_delayed_shipments\",\n      \"description\": \"Identify and retrieve all currently delayed shipments and their details.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"calculate_revised_delivery_dates\",\n      \"description\": \"Calculate updated estimated delivery dates for each delayed shipment based on current transit data.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_delayed_shipments\"\n      ]\n    },\n    {\n      \"id\": \"send_customer_emails\",\n      \"description\": \"Draft and send notification emails to impacted customers with their revised delivery dates.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"calculate_revised_delivery_dates\"\n      ]\n    }\n  ]\n}",
-  "tokensIn": 383,
-  "tokensOut": 204
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_delayed_shipments\",\n      \"description\": \"Retrieve the list of all currently delayed shipments from the logistics database.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"calculate_revised_dates\",\n      \"description\": \"Calculate the new estimated delivery dates for each delayed shipment based on current transit status.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"fetch_delayed_shipments\"]\n    },\n    {\n      \"id\": \"email_customers\",\n      \"description\": \"Send personalized emails to each affected customer informing them of their revised delivery date.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\"calculate_revised_dates\"]\n    }\n  ]\n}",
+  "tokensIn": 510,
+  "tokensOut": 190
 }
