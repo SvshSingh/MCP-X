@@ -32,10 +32,26 @@ jobs:
       - name: Test + coverage
         run: npm run coverage
 
+      # Fixture mode only: runEval always requests the fixture LLM client for
+      # a non-live run, so this needs no GEMINI_API_KEY and makes no network
+      # call. A scenario regressing planning, routing, or orchestration exits
+      # non-zero here and turns the build red — that's the gate, not just the
+      # report.
+      - name: Evaluation harness
+        run: npm run eval
+
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: coverage/
+          if-no-files-found: warn
+
+      - name: Upload evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval/report.md
           if-no-files-found: warn
