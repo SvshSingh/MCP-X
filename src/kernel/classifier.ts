@@ -47,6 +47,13 @@ const normalise = (text: string): string => ` ${text.toLowerCase().replace(/[^a-
  * Whole-word matching only: "post" must not fire on "postcode", and "add" must
  * not fire on "address". Multi-word cues like "look up" are matched as
  * phrases.
+ *
+ * Regular plurals count as the same cue. Whole-word matching alone meant
+ * "email" missed "notification emails" and "alert" missed "price alerts" —
+ * a task was routed differently for writing its noun in the plural, which is
+ * not a distinction any of these capabilities actually turn on. Only the
+ * regular "+s"/"+es" forms are tried; this is not a stemmer, and irregular
+ * plurals are still a vocabulary entry the agent has to declare.
  */
 export function scoreAgents(task: Task, registry: AgentRegistry): Map<string, number> {
   const haystack = normalise(`${task.description} ${task.id.replace(/_/g, " ")}`);
@@ -56,8 +63,10 @@ export function scoreAgents(task: Task, registry: AgentRegistry): Map<string, nu
     let score = 0;
 
     for (const keyword of agent.keywords) {
-      const needle = ` ${keyword.toLowerCase().replace(/[^a-z0-9]+/g, " ")} `;
-      if (haystack.includes(needle)) score++;
+      const base = keyword.toLowerCase().replace(/[^a-z0-9]+/g, " ");
+      const forms = [base, `${base}s`, `${base}es`];
+
+      if (forms.some((form) => haystack.includes(` ${form} `))) score++;
     }
 
     scores.set(agent.name, score);
@@ -80,6 +89,14 @@ export function keywordClassify(task: Task, registry: AgentRegistry): Classifica
 
   // Registry order breaks ties, so the result never depends on Map iteration
   // order changing under us.
+  //
+  // Registry order puts the least-privileged agent first, and that is the safe
+  // direction for an ambiguous tie. Breaking ties toward the *side-effecting*
+  // agent was tried and reverted: "Check that the post arrived" scores research
+  // and publish equally ("check" vs "post" as a noun), and routing it to
+  // publish would hand `createPost` to a task that only reads. Withholding a
+  // capability makes a task fail visibly; granting one it should not have fails
+  // silently, which is far worse.
   for (const name of registry.names) {
     const score = scores.get(name) ?? 0;
     if (score > bestScore) {
