@@ -4,7 +4,7 @@
   <strong>A multi-agent orchestrator over the Model Context Protocol</strong><br/>
   Decomposes a natural-language goal into a validated task DAG, routes each task to a specialist
   agent, executes independent work in parallel, repairs the plan when a task fails, and writes a
-  durable, replayable record of everything it did — measured by its own evaluation harness.
+  durable, replayable record of everything it did  measured by its own evaluation harness.
 </p>
 
 <p align="center">
