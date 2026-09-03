@@ -1,6 +1,6 @@
 {
   "goal": "validate this week's shipment records against compliance rules and report any breaches",
-  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_shipment_records\",\n      \"description\": \"Retrieve all shipment records logged for the current week.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"fetch_compliance_rules\",\n      \"description\": \"Retrieve the active set of shipment compliance rules and standards.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"validate_shipments\",\n      \"description\": \"Cross-reference the weekly shipment records against the compliance rules to identify any breaches.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_shipment_records\",\n        \"fetch_compliance_rules\"\n      ]\n    },\n    {\n      \"id\": \"report_breaches\",\n      \"description\": \"Generate and distribute a compliance report detailing any detected violations.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"validate_shipments\"\n      ]\n    }\n  ]\n}",
-  "tokensIn": 381,
-  "tokensOut": 252
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_shipment_records\",\n      \"description\": \"Retrieve the shipment records for the current week.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"fetch_compliance_rules\",\n      \"description\": \"Retrieve the current regulatory compliance rules.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"validate_shipments\",\n      \"description\": \"Compare the shipment records against the compliance rules to identify any breaches.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_shipment_records\",\n        \"fetch_compliance_rules\"\n      ]\n    }\n  ]\n}",
+  "tokensIn": 508,
+  "tokensOut": 183
 }

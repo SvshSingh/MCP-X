@@ -47,18 +47,23 @@ export const DEFAULT_REPEATS = 3;
 
 /**
  * Floor for the CI gate, pinned to the suite's current honest result
- * (12/15 = 80%) rather than to 100%.
+ * (14/15 = 93%) rather than to 100%.
  *
- * Three scenarios fail today on a real, documented finding — the keyword
- * classifier's vocabulary doesn't cover every verb a fixed planner prompt now
- * produces (`ORCHESTRATOR_PLAN.md` has the detail). Gating CI on every
- * scenario passing would leave the build permanently red for a known,
- * tracked gap and make the badge meaningless. Gating on this floor instead
- * still does the one thing Phase 8 asks for: a change that further degrades
- * planning or routing drops the rate below 80% and turns CI red, which a
- * change that doesn't regress anything will never do.
+ * One scenario fails, and it is a understood limit rather than an unexamined
+ * bug: `newsletter-curation`'s final task is "Format the summaries into a
+ * newsletter and publish it", which scores a compute verb and a publish verb
+ * exactly equally. Bag-of-words keyword routing cannot resolve a sentence that
+ * genuinely does both, and two different tie-break rules were tried and
+ * reverted after each produced a worse counter-example (see
+ * `ORCHESTRATOR_PLAN.md`). Resolving it is the LLM classifier's job, which the
+ * suite disables by default because it costs a call per task.
+ *
+ * Gating on every scenario passing would leave the build red for that known
+ * ceiling and make the badge meaningless. This floor still does the one thing
+ * Phase 8 asks for: a change that degrades planning or routing drops the rate
+ * below 93% and turns CI red, which a change that regresses nothing never will.
  */
-export const DEFAULT_MIN_PASS_RATE = 0.8;
+export const DEFAULT_MIN_PASS_RATE = 0.93;
 
 export function loadScenarios(dir: string = SCENARIO_DIR): Scenario[] {
   return readdirSync(dir)

@@ -210,57 +210,50 @@ Current result, regenerated from this commit:
 
 | Metric | Value |
 |---|---|
-| Scenario pass rate | **12/15 (80%)** |
+| Scenario pass rate | **14/15 (93%)** |
 | Task completion rate | 100% |
 | Plan validity (valid DAG, first try) | 100% |
-| Capability F1 | 0.96 |
-| Step efficiency | 0.95 |
-| Tokens (fixture replay) | 17,166 in / 9,948 out |
+| Capability F1 | 0.99 |
+| Step efficiency | 0.98 |
+| Tokens (fixture replay) | 22,881 in / 8,598 out |
 
-### The harness has now found two real bugs, in two different modules
+### The harness has found three real bugs so far, in three different modules
 
-**Round one: the planner padded trivial goals.** For *"add 2 and 3 and tell me the answer"*, an
-earlier version of the planner produced three tasks, inventing a `research` step to fetch
-numbers already in the prompt — because its system prompt said `"Prefer 3 to 8 tasks"`, and the
-model was simply obeying it. Reproduced under two different Gemini models, which is what ruled
-out the model and implicated the instruction. **Fixed**: the floor is gone, replaced with an
-instruction to use as few tasks as the goal genuinely needs. `add-two-numbers` now plans as 2
-tasks and passes.
+**The planner padded trivial goals.** Its prompt said `"Prefer 3 to 8 tasks"`, so *"add 2 and 3"*
+came back as three tasks including an invented `research` step to fetch numbers already in the
+prompt. The model was obeying instructions. **Fixed** — that goal now plans as a single task.
 
-**Round two: fixing that surfaced a different, unrelated gap.** All 15 golden fixtures were
-re-recorded against the corrected prompt, and three *new* scenarios started failing —
-`compare-suppliers`, `compliance-check`, `shipment-eta-notify`. Tracing it by running the
-classifier directly against the exact task descriptions the fixed prompt now produces: it's not
-the planner this time, it's the keyword classifier's vocabulary. `"Cross-reference the records
-against the compliance rules to identify any breaches"` routes to `research` — because
-`"identify"` is a research keyword and no compute keyword matches `"cross-reference"`.
-`"Generate and distribute a compliance report"` routes to `compute` — `"generate"` is a compute
-keyword, and neither `"distribute"` nor `"report"` is in the publish vocabulary. **Left
-unfixed, on purpose, for the same reason as round one**: it's a distinct, separately-scoped
-problem, tracked rather than chased into an open-ended tuning pass in the same sitting.
+**The planner invented side effects.** For goals asking only for analysis it still appended a
+delivery step nobody requested: `publish_ranked_list` for *"rank them by severity"*,
+`publish_department_summary` for *"calculate the total per department"*. That is more than a
+metric problem — an orchestrator that spontaneously adds a publishing step is spontaneously
+adding a side effect, which is the exact thing the specialist split exists to make deliberate.
+**Fixed**: a goal that asks to compare, rank, calculate, audit or summarise is finished once the
+analysis exists, and returning the answer to the user is explicitly not publishing.
 
-Two bugs, two different root causes, both diagnosed by tracing the actual generated output
-through the actual routing code rather than guessing — that's a stronger result than a clean
-15/15 would have been, and it's why the number below moved from 14 to 12 between one commit and
-the next instead of climbing to a tidy 15.
+**Two of those bugs were cancelling each other out.** Four *passing* scenarios passed for the
+wrong reason: the planner added a phantom `publish_*` task, and the keyword classifier
+mis-routed it to `compute`, which happened to match the expectation. Fixing only the classifier
+would have dropped the suite to **9/15** by exposing the planner over-reach underneath — measured
+with a diagnostic before any fix was committed, not discovered afterwards.
 
 <details>
 <summary>Full per-scenario table (fixture replay)</summary>
 
 | Scenario | Result | Complete | Valid DAG | Recall | Precision | Steps | Efficiency |
 |---|---|---|---|---|---|---|---|
-| `add-two-numbers` | pass | 100% | 100% | 100% | 100% | 2.0 / 3 | 0.50 |
+| `add-two-numbers` | pass | 100% | 100% | 100% | 100% | 1.0 / 3 | 1.00 |
 | `backlog-triage` | pass | 100% | 100% | 100% | 100% | 3.0 / 6 | 1.00 |
-| `compare-suppliers` | **FAIL** | 100% | 100% | 100% | 67% | 3.0 / 7 | 1.00 |
-| `compliance-check` | **FAIL** | 100% | 100% | 67% | 100% | 4.0 / 8 | 1.00 |
-| `expense-summary` | pass | 100% | 100% | 100% | 100% | 3.0 / 6 | 1.00 |
+| `compare-suppliers` | pass | 100% | 100% | 100% | 100% | 3.0 / 7 | 1.00 |
+| `compliance-check` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 |
+| `expense-summary` | pass | 100% | 100% | 100% | 100% | 2.0 / 6 | 1.00 |
 | `hn-summary-to-twitter` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 |
-| `incident-postmortem` | pass | 100% | 100% | 100% | 100% | 4.0 / 9 | 1.00 |
+| `incident-postmortem` | pass | 100% | 100% | 100% | 100% | 3.0 / 9 | 1.00 |
 | `inventory-audit` | pass | 100% | 100% | 100% | 100% | 4.0 / 7 | 0.75 |
-| `newsletter-curation` | pass | 100% | 100% | 100% | 100% | 4.0 / 9 | 1.00 |
+| `newsletter-curation` | **FAIL** | 100% | 100% | 67% | 100% | 3.0 / 9 | 1.00 |
 | `price-monitor-alert` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
 | `release-announcement` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
-| `shipment-eta-notify` | **FAIL** | 100% | 100% | 67% | 100% | 3.0 / 8 | 1.00 |
+| `shipment-eta-notify` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 |
 | `standup-digest` | pass | 100% | 100% | 100% | 100% | 4.0 / 8 | 1.00 |
 | `supplier-scorecard` | pass | 100% | 100% | 100% | 100% | 3.0 / 7 | 1.00 |
 | `warehouse-restock` | pass | 100% | 100% | 100% | 100% | 3.0 / 8 | 1.00 |
@@ -269,13 +262,33 @@ Regenerate this table yourself: `npm run eval` writes it to `eval/report.md`.
 
 </details>
 
+### The one remaining failure is a ceiling, not an oversight
+
+`newsletter-curation`'s last task is *"Format the summaries into a newsletter and publish it to
+the designated platform"* — a single sentence that genuinely does both, scoring `format`
+(compute) and `publish` (publish) exactly 1–1. Bag-of-words keyword scoring cannot resolve that.
+
+Two principled tie-break rules were tried and **reverted**, each disproved by a counter-example
+already in the test suite:
+
+- *Break ties toward the side-effecting agent.* Reasonable — a task that drafts **and** sends must
+  route to whoever owns sending. But `"Check that the post arrived"` ties research against
+  publish because "post" is a **noun** there, and the rule would hand `createPost` to a task that
+  only reads. Withholding a capability makes a task fail loudly; granting one it shouldn't have
+  fails silently, so ties should break toward *lower* privilege.
+- *Treat the task id's leading token as the primary verb.* Fixes `publish_newsletter`, breaks
+  `post_process_results` — same unsafe direction.
+
+Resolving this correctly is the LLM classifier's job. The suite disables it by default only
+because it costs one call per task against a 20-request-per-day free tier.
+
 ### CI gates on a floor, not on 15/15
 
 `npm run eval` runs in CI on every push and pull request. It gates on the suite's pass rate
-staying at or above **80%** — today's exact result — not on every scenario passing. Demanding
+staying at or above **93%** — today's exact result — not on every scenario passing. Demanding
 100% would leave the build permanently red for the tracked classifier gap above and turn the CI
 badge at the top of this file into a lie. The floor still does the one thing that matters: a
-change that further degrades planning or routing drops the rate below 80% and turns CI red,
+change that further degrades planning or routing drops the rate below 93% and turns CI red,
 while a change that doesn't regress anything never will. That claim isn't just asserted — there's
 a test that builds a synthetic two-scenario suite, shows it passing at the default floor, then
 shows the identical result failing once the floor is raised to 100%, so "it passes" isn't a
@@ -367,12 +380,12 @@ npm run typecheck   # tsc --noEmit, strict mode
 npm run lint        # ESLint 9, typescript-eslint
 npm test            # 407 tests, zero network calls, zero API keys required
 npm run coverage    # v8 coverage; core modules held to an 85% floor that fails the build
-npm run eval        # 15 golden scenarios; fails the build below an 80% pass-rate floor
+npm run eval        # 15 golden scenarios; fails the build below a 93% pass-rate floor
 ```
 
 All five run on every push and pull request. Both gates **fail the build**, not just report it:
 coverage is currently at 98.7% statements / 93.0% branches against an 85% floor (headroom, not
-the target); the eval pass rate is pinned exactly to today's honest 80% result, so it catches a
+the target); the eval pass rate is pinned exactly to today's honest 93% result, so it catches a
 future regression without demanding a perfection this project doesn't currently have.
 
 Every line `npm run execute` prints is tagged `[runId]`, generated before anything else can
@@ -389,9 +402,8 @@ Vitest for testing, GitHub Actions for CI.
 
 Tracked in detail in [`ORCHESTRATOR_PLAN.md`](ORCHESTRATOR_PLAN.md):
 
-- Close the classifier's keyword-coverage gap the fixed planner prompt surfaced — the three
-  scenarios currently failing on capability precision/recall (`compare-suppliers`,
-  `compliance-check`, `shipment-eta-notify`).
+- Resolve the one remaining routing tie by letting the LLM classifier handle the eval suite,
+  rather than adding a third keyword heuristic after two were disproved.
 - Wire specialist agents to real tool execution end-to-end, rather than the current stubbed
   runner used to isolate orchestration from tool-call variance during evaluation.
 - The optional domain reskin: swap the demo tools for a supply-chain-flavoured toy workflow.

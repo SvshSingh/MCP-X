@@ -1,6 +1,6 @@
 {
   "goal": "pull last month's expense records and calculate the total per department",
-  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_expense_records\",\n      \"description\": \"Retrieve all expense records recorded during the previous calendar month.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"calculate_department_totals\",\n      \"description\": \"Aggregate the retrieved expense records and calculate the sum total for each department.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_expense_records\"\n      ]\n    },\n    {\n      \"id\": \"publish_department_summary\",\n      \"description\": \"Format and output the total expenses per department report.\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"calculate_department_totals\"\n      ]\n    }\n  ]\n}",
-  "tokensIn": 380,
-  "tokensOut": 191
+  "response": "{\n  \"tasks\": [\n    {\n      \"id\": \"fetch_expense_records\",\n      \"description\": \"Retrieve all expense records for the previous calendar month.\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"calculate_department_totals\",\n      \"description\": \"Group the retrieved expense records by department and calculate the sum of expenses for each.\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"fetch_expense_records\"\n      ]\n    }\n  ]\n}",
+  "tokensIn": 507,
+  "tokensOut": 130
 }

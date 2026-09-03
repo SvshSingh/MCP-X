@@ -3,10 +3,10 @@
   "goal": "validate this week's shipment records against compliance rules and report any breaches",
   "expectedCapabilities": [
     "research",
-    "compute",
-    "publish"
+    "compute"
   ],
-  "terminalCapability": "publish",
-  "optimalSteps": 4,
-  "maxSteps": 8
+  "terminalCapability": "compute",
+  "optimalSteps": 3,
+  "maxSteps": 8,
+  "notes": "Expectation corrected: 'report any breaches' names no recipient, so under the planner's own rule (returning the answer to the user is not a publishing step) this goal ends at analysis. The original research/compute/publish expectation was written in Phase 7 against padding-era planner output. Contrast shipment-eta-notify ('email the customers') and price-monitor-alert ('alert the team'), which do name one."
 }

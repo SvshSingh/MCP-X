@@ -47,6 +47,13 @@ Rules:
   already given in the goal — merely to pad the count. Each task should be one real unit of work
   a single agent can perform.
 - agentHint is your best guess at the specialist: "research" gathers information, "compute" transforms or calculates, "publish" writes to the outside world.
+- Only include a publishing step if the goal explicitly asks for the result to go somewhere or
+  to someone -- posting it, sending it, emailing it, notifying a person. A goal that asks you to
+  compare, rank, calculate, audit, validate or summarise is finished once that analysis exists.
+  Do not append a step to publish, report or distribute a result the goal never asked you to
+  deliver.
+- Returning the answer to the user who set the goal is NOT a publishing step. The final result
+  is returned automatically, so never add a task just to hand the answer back.
 - Output the JSON object and nothing else. No markdown fences, no commentary.`;
 
 /** What the model is asked to return: the task list only. */
