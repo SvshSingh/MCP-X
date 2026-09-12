@@ -37,7 +37,7 @@ export const DEFAULT_MAX_REPLANS = 2;
  */
 export type AgentRunner = (
   task: Task,
-  context: { attempt: number; agent: string; state: RunState },
+  context: { attempt: number; agent: string; state: RunState; runId: string },
 ) => Promise<AgentResultInput> | AgentResultInput;
 
 /**
@@ -232,7 +232,7 @@ export async function runPlan(options: OrchestratorOptions): Promise<RunOutcome>
     // which may be the only work that can still make progress.
     const settled = await Promise.allSettled(
       dispatched.map(async ({ task, attempt, agent }) =>
-        execute(task, { attempt, agent, state }),
+        execute(task, { attempt, agent, state, runId }),
       ),
     );
 

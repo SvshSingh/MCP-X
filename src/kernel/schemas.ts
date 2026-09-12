@@ -57,6 +57,14 @@ export const Task = z.object({
   description: z.string().min(1, "a task must describe what it does"),
   /** Optional hint from the planner; the classifier may override it. */
   agentHint: z.string().min(1).optional(),
+  /**
+   * The tool this task runs, when the plan binds one. A bound tool makes
+   * routing exact -- the task goes to whichever specialist owns that tool --
+   * and lets the plan be checked for data wiring before anything executes.
+   */
+  tool: z.string().min(1).optional(),
+  /** Static arguments for the bound tool. Upstream data is supplied separately at run time. */
+  args: z.record(z.unknown()).optional(),
   dependsOn: z.array(TaskId).default([]),
   status: TaskStatus.default("pending"),
   attempts: z.number().int().min(0).default(0),
@@ -230,6 +238,8 @@ export const AgentResult = z
     taskId: TaskId,
     ok: z.boolean(),
     output: z.string().optional(),
+    /** Structured output a downstream task consumes; `output` is its human-readable summary. */
+    data: z.unknown().optional(),
     error: z.string().optional(),
     toolCalls: z.array(ToolCall).default([]),
     tokensIn: z.number().int().min(0).default(0),
