@@ -15,38 +15,11 @@ import { z } from "zod";
 
 import { TwitterApi } from "twitter-api-v2";
 
-/** Coarse grouping a specialist agent will own. */
-export const Capability = z.enum(["research", "compute", "publish"]);
-export type Capability = z.infer<typeof Capability>;
+import { SUPPLY_CHAIN_TOOLS } from "../domain/supply-chain/tools.js";
 
-/**
- * The MCP content payload returned by every tool.
- *
- * The index signature is required by the SDK's result type: the protocol
- * permits extra top-level fields such as `_meta`, so the shape is open.
- */
-export interface ToolResult {
-  [key: string]: unknown;
-  content: { type: "text"; text: string }[];
-  isError?: boolean;
-}
+import { textResult, errorResult, type Capability, type ToolDefinition } from "./tool-types.js";
 
-export const textResult = (text: string): ToolResult => ({
-  content: [{ type: "text", text }],
-});
-
-export const errorResult = (text: string): ToolResult => ({
-  content: [{ type: "text", text }],
-  isError: true,
-});
-
-export interface ToolDefinition<S extends z.ZodRawShape = z.ZodRawShape> {
-  name: string;
-  description: string;
-  capability: Capability;
-  schema: S;
-  handler: (args: z.objectOutputType<S, z.ZodTypeAny>) => Promise<ToolResult> | ToolResult;
-}
+export * from "./tool-types.js";
 
 /* -------------------------------------------------------------------------- */
 /* addTwoNumbers                                                              */
@@ -148,7 +121,7 @@ export const createPost = makeCreatePost();
 /* -------------------------------------------------------------------------- */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const TOOLS: ToolDefinition<any>[] = [addTwoNumbers, createPost];
+export const TOOLS: ToolDefinition<any>[] = [addTwoNumbers, createPost, ...SUPPLY_CHAIN_TOOLS];
 
 export const toolsByCapability = (
   tools: readonly ToolDefinition<z.ZodRawShape>[] = TOOLS,

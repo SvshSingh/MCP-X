@@ -118,16 +118,36 @@ describe("createPost", () => {
 });
 
 describe("tool registry", () => {
-  it("exposes both ported tools", () => {
-    expect(TOOLS.map((t) => t.name).sort()).toEqual(["addTwoNumbers", "createPost"]);
+  it("exposes the ported tools and the supply-chain tools", () => {
+    expect(TOOLS.map((t) => t.name).sort()).toEqual(
+      [
+        "addTwoNumbers",
+        "createPost",
+        "check_inventory",
+        "lookup_suppliers",
+        "compute_reorder_qty",
+        "validate_compliance",
+        "notify_supplier",
+        "queue_manual_review",
+      ].sort(),
+    );
   });
 
   it("groups tools by the capability the classifier will route on", () => {
-    expect(toolsByCapability()).toEqual({
-      research: [],
-      compute: ["addTwoNumbers"],
-      publish: ["createPost"],
-    });
+    const grouped = toolsByCapability();
+
+    expect(grouped.research.sort()).toEqual(["check_inventory", "lookup_suppliers"]);
+    expect(grouped.compute.sort()).toEqual(
+      ["addTwoNumbers", "compute_reorder_qty", "validate_compliance"].sort(),
+    );
+    expect(grouped.publish.sort()).toEqual(
+      ["createPost", "notify_supplier", "queue_manual_review"].sort(),
+    );
+  });
+
+  it("gives tool names that are unique", () => {
+    const names = TOOLS.map((t) => t.name);
+    expect(new Set(names).size).toBe(names.length);
   });
 });
 
