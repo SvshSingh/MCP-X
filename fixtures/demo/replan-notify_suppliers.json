@@ -1,0 +1,9 @@
+{
+  "goal": "replan after notify_suppliers fails",
+  "match": "Failed and unusable: notify_suppliers",
+  "responses": [
+    "{\n  \"reason\": \"Direct supplier portal notification failed due to connection issues with SUP-NOVA, so purchase orders are now queued for manual buyer review.\",\n  \"tasks\": [\n    {\n      \"id\": \"check_stock_levels\",\n      \"description\": \"Check current warehouse stock to identify low-stock SKUs needing reorder.\",\n      \"tool\": \"check_inventory\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"lookup_supplier_records\",\n      \"description\": \"Retrieve supplier master records and certification status for low-stock SKUs.\",\n      \"tool\": \"lookup_suppliers\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": [\n        \"check_stock_levels\"\n      ]\n    },\n    {\n      \"id\": \"calculate_reorder_quantities\",\n      \"description\": \"Calculate order-up-to reorder quantities for low-stock SKUs.\",\n      \"tool\": \"compute_reorder_qty\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"check_stock_levels\"\n      ]\n    },\n    {\n      \"id\": \"validate_order_compliance\",\n      \"description\": \"Validate proposed order lines against distribution rules and supplier certifications.\",\n      \"tool\": \"validate_compliance\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"calculate_reorder_quantities\",\n        \"lookup_supplier_records\"\n      ]\n    },\n    {\n      \"id\": \"queue_orders_for_manual_review\",\n      \"description\": \"Queue approved order lines for a buyer to manually review and place with suppliers after portal dispatch failed.\",\n      \"tool\": \"queue_manual_review\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\n        \"validate_order_compliance\"\n      ]\n    }\n  ]\n}"
+  ],
+  "tokensIn": 860,
+  "tokensOut": 439
+}
