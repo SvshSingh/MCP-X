@@ -19,7 +19,14 @@
     "replay": "tsx src/cli/replay.ts",
     "eval": "tsx eval/cli.ts",
     "eval:live": "tsx eval/cli.ts --live",
-    "eval:record": "tsx eval/record-fixtures.ts"
+    "eval:record": "tsx eval/record-fixtures.ts",
+    "demo": "tsx src/cli/demo.ts --open",
+    "demo:fail": "tsx src/cli/demo.ts --fail --open",
+    "demo:live": "tsx src/cli/demo.ts --live --open",
+    "demo:record": "tsx src/cli/demo.ts --record --fail",
+    "demo:reset": "node -e \"require('fs').rmSync('demo/outbox',{recursive:true,force:true});require('fs').rmSync('runs',{recursive:true,force:true});console.log('cleared demo/outbox and runs')\"",
+    "doctor": "tsx src/cli/doctor.ts",
+    "mcp:demo": "tsx src/cli/mcp-demo.ts"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",

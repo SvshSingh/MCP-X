@@ -16,6 +16,7 @@
 import type { LlmClient } from "../llm/types.js";
 
 import { extractJson, JsonExtractionError } from "./json.js";
+import { renderCatalog, validateToolBindings, type ToolCatalogEntry } from "./tool-catalog.js";
 import { Plan, type PlanInput } from "./schemas.js";
 
 export const DEFAULT_MAX_PLAN_ATTEMPTS = 3;
@@ -67,6 +68,13 @@ export interface PlannerOptions {
   maxAttempts?: number;
   /** Injectable clock so `createdAt` is deterministic in tests. */
   now?: () => Date;
+  /**
+   * Tools the plan must bind. When given, the catalog is shown to the model,
+   * every task must name one of these tools, and each tool's data inputs must
+   * arrive from a direct dependency -- all enforced by the same repair loop
+   * that handles cycles. Omitted, planning is unchanged.
+   */
+  tools?: readonly ToolCatalogEntry[];
 }
 
 export interface PlanAttempt {
@@ -146,7 +154,10 @@ export async function createPlan(
   const now = options.now ?? (() => new Date());
   const attempts: PlanAttempt[] = [];
 
-  let prompt = buildInitialPrompt(trimmedGoal);
+  const catalogText = options.tools === undefined ? "" : `
+
+${renderCatalog(options.tools)}`;
+  let prompt = buildInitialPrompt(trimmedGoal) + catalogText;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const response = await options.llm.generate({
@@ -179,8 +190,12 @@ export async function createPlan(
 
     if (candidate !== null) {
       const validated = Plan.safeParse(candidate);
+      const bindingProblems =
+        validated.success && options.tools !== undefined
+          ? validateToolBindings(validated.data.tasks, options.tools)
+          : [];
 
-      if (validated.success) {
+      if (validated.success && bindingProblems.length === 0) {
         attempts.push({
           attempt,
           raw: response.text,
@@ -197,7 +212,9 @@ export async function createPlan(
         };
       }
 
-      errors.push(...describeIssues(validated.error.issues));
+      errors.push(
+        ...(validated.success ? bindingProblems : describeIssues(validated.error.issues)),
+      );
     }
 
     attempts.push({
@@ -208,7 +225,7 @@ export async function createPlan(
       tokensOut: response.tokensOut,
     });
 
-    prompt = buildRepairPrompt(trimmedGoal, response.text, errors);
+    prompt = buildRepairPrompt(trimmedGoal, response.text, errors) + catalogText;
   }
 
   const lastErrors = attempts.at(-1)?.errors ?? [];

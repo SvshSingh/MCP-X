@@ -485,13 +485,64 @@ two models. 407 tests, 98.7% statements.
 
 ---
 
-### Phase 9 — Domain reskin + README (½ day) — *optional, high payoff for TraceLink*
-- [ ] Swap the demo tools to a supply-chain flavoured toy workflow:
-      `check_inventory → compute_reorder_qty → validate_compliance → notify_supplier`
-- [ ] README: architecture diagram, one animated demo GIF, eval report table, "how to run"
+### Phase 9 — Domain reskin + demo readiness ✅ DONE
+- [x] Swap the demo tools to a supply-chain flavoured workflow:
+      `check_inventory → compute_reorder_qty → validate_compliance → notify_supplier`,
+      plus `lookup_suppliers` (a parallel branch) and `queue_manual_review` (the repair route)
+- [x] README: architecture diagram, eval report table, "how to run" — and a real transcript in
+      place of the animated GIF (see deviations)
+- [x] Demo-ready for a live screen share: one-command offline demo, failure scenario, HTML run
+      report, pre-flight check, runbook
 
 **Done when:** a stranger can read the README in 90 seconds and understand it's an
-orchestrator, not a chatbot.
+orchestrator, not a chatbot. ✅
+*492 tests, 98.9% statements / 91.4% branches. Eval unchanged at 14/15.*
+
+**The reskin became real tool execution, because a stub cannot be demoed.** Up to Phase 8,
+specialists returned `ok` without doing anything, and the README said so. Showing that on a
+screen share proves nothing. The six supply-chain tools do actual work against
+`demo/warehouse.json` — a toy pharmaceutical distribution centre with GDP, HAZMAT and
+cold-chain attributes — and the only side effect is writing purchase orders to a local outbox.
+
+**Plans now bind tools.** A task may name the exact tool it runs. That changes three things.
+Routing becomes exact: a bound task goes to the owner of its tool, so the keyword tie documented
+above cannot arise. Data wiring is checked at planning time: each tool declares what it produces
+and consumes, and a consumer must depend *directly* on a producer, or the plan goes back to the
+model through the existing repair loop. And execution becomes deterministic once a plan exists,
+which is what makes an offline replay faithful. The eval harness plans without a catalog, so its
+fixtures and its 14/15 result are untouched.
+
+**Verified live before any offline fixture existed.** The first run against `gemini-3.6-flash`,
+with a supplier portal forced down, produced a correctly wired five-task plan with a parallel
+wave on attempt 1. The portal failure retried, failed again and replanned to
+`queue_manual_review`, keeping all four completed tasks. A new `RecordingLlmClient` captured
+those exact responses as `fixtures/demo/`, so the offline demo replays what the model really said.
+
+**Bugs caught while building it:**
+- The replan narration announced the *old* route. The orchestrator appends the `replan` event
+  before the new revision takes effect, so the demo now holds the reason until the revision
+  arrives and announces both together. A test pins it.
+- Generated documents used an em dash, which renders as `â€”` when a Windows console prints a
+  UTF-8 file — exactly what happens on a screen share. Generated files are now ASCII, tested.
+- A tool argument schema that does not declare `upstream` silently receives nothing, because
+  arguments pass through Zod and undeclared keys are stripped. Correct, but the first thing a new
+  tool author would trip over, so a test documents it.
+- The colour escape in the demo CLI was a raw, invisible `ESC` byte in source. Now ``.
+
+**Demo tooling**
+- `npm run demo` / `demo:fail` — offline, flag-driven so they work as typed in PowerShell; the
+  README's older `PLANNER_MODE=fixture npm run …` form does not.
+- `--plain` for consoles on a non-UTF-8 code page.
+- An HTML report per run, opened automatically.
+- `npm run doctor` runs both scenarios end to end in a scratch folder, checks the console code
+  page, and with `--live` spends one call per model to report quota.
+- `npm run mcp:demo` drives the workflow through a real MCP SDK client, backed by an end-to-end
+  SSE test.
+- [`DEMO.md`](DEMO.md) is a timed runbook with likely questions and failure fixes.
+
+**Deviation: no animated GIF.** A GIF of terminal output goes stale with the first change and
+cannot be verified. The README instead carries a real transcript, and anyone can reproduce the
+run itself in one command without a key.
 
 ---
 

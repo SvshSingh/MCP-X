@@ -1,0 +1,8 @@
+{
+  "goal": "Check warehouse stock levels, work out reorder quantities, make sure every order is compliant, and notify the suppliers",
+  "responses": [
+    "{\n  \"tasks\": [\n    {\n      \"id\": \"check_stock_levels\",\n      \"description\": \"Check current warehouse stock to identify low-stock SKUs needing reorder.\",\n      \"tool\": \"check_inventory\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": []\n    },\n    {\n      \"id\": \"lookup_supplier_records\",\n      \"description\": \"Retrieve supplier master records and certification status for low-stock SKUs.\",\n      \"tool\": \"lookup_suppliers\",\n      \"agentHint\": \"research\",\n      \"dependsOn\": [\"check_stock_levels\"]\n    },\n    {\n      \"id\": \"calculate_reorder_quantities\",\n      \"description\": \"Calculate order-up-to reorder quantities for low-stock SKUs.\",\n      \"tool\": \"compute_reorder_qty\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\"check_stock_levels\"]\n    },\n    {\n      \"id\": \"validate_order_compliance\",\n      \"description\": \"Validate proposed order lines against distribution rules and supplier certifications.\",\n      \"tool\": \"validate_compliance\",\n      \"agentHint\": \"compute\",\n      \"dependsOn\": [\n        \"calculate_reorder_quantities\",\n        \"lookup_supplier_records\"\n      ]\n    },\n    {\n      \"id\": \"notify_suppliers\",\n      \"description\": \"Send approved purchase orders to suppliers via their ordering portals.\",\n      \"tool\": \"notify_supplier\",\n      \"agentHint\": \"publish\",\n      \"dependsOn\": [\"validate_order_compliance\"]\n    }\n  ]\n}"
+  ],
+  "tokensIn": 917,
+  "tokensOut": 373
+}

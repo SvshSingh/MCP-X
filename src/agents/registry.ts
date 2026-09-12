@@ -105,7 +105,7 @@ export const RESEARCH_AGENT: AgentDefinition = AgentDefinition.parse({
   description:
     "Gathers information from outside the system: fetching pages and feeds, looking things up, reading and extracting source material. Does not transform or publish.",
   capability: "research",
-  tools: [],
+  tools: ["check_inventory", "lookup_suppliers"],
   keywords: [
     "fetch",
     "retrieve",
@@ -134,7 +134,7 @@ export const COMPUTE_AGENT: AgentDefinition = AgentDefinition.parse({
   description:
     "Transforms information already in hand: arithmetic, summarising, drafting, formatting, filtering, ranking. Does not reach the network or publish.",
   capability: "compute",
-  tools: ["addTwoNumbers"],
+  tools: ["addTwoNumbers", "compute_reorder_qty", "validate_compliance"],
   keywords: [
     "calculate",
     "compute",
@@ -173,7 +173,7 @@ export const PUBLISH_AGENT: AgentDefinition = AgentDefinition.parse({
   description:
     "Writes to the outside world: posting, sending, notifying. The only agent with side effects visible to anyone else, so nothing else may hold these tools.",
   capability: "publish",
-  tools: ["createPost"],
+  tools: ["createPost", "notify_supplier", "queue_manual_review"],
   keywords: [
     "post",
     "publish",

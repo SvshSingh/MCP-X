@@ -111,9 +111,13 @@ describe("SpecialistAgent", () => {
   it("exposes only the tools it declares", () => {
     const compute = new SpecialistAgent(COMPUTE_AGENT);
 
-    expect(compute.toolNames).toEqual(["addTwoNumbers"]);
+    expect(compute.toolNames.sort()).toEqual(
+      ["addTwoNumbers", "compute_reorder_qty", "validate_compliance"].sort(),
+    );
     expect(compute.canUse("addTwoNumbers")).toBe(true);
     expect(compute.canUse("createPost")).toBe(false);
+    // A read-only specialist can compute an order but never send it.
+    expect(compute.canUse("notify_supplier")).toBe(false);
   });
 
   it("invokes a tool it owns", async () => {
@@ -144,9 +148,17 @@ describe("SpecialistAgent", () => {
   });
 
   it("has no tools when it declares none", () => {
-    const research = new SpecialistAgent(RESEARCH_AGENT);
+    const empty = new SpecialistAgent(
+      AgentDefinition.parse({ name: "empty", description: "owns nothing", capability: "research" }),
+    );
 
-    expect(research.toolNames).toEqual([]);
+    expect(empty.toolNames).toEqual([]);
+  });
+
+  it("gives research only read tools", () => {
+    expect(new SpecialistAgent(RESEARCH_AGENT).toolNames.sort()).toEqual(
+      ["check_inventory", "lookup_suppliers"].sort(),
+    );
   });
 
   it("ignores a declared tool that does not exist", () => {

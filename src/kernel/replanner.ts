@@ -26,6 +26,7 @@ import type { LlmClient } from "../llm/types.js";
 
 import type { RunState } from "./blackboard.js";
 import { extractJson, JsonExtractionError } from "./json.js";
+import { renderCatalog, validateToolBindings, type ToolCatalogEntry } from "./tool-catalog.js";
 import { Plan, type PlanInput, type Task } from "./schemas.js";
 
 export const DEFAULT_MAX_REPLANS = 2;
@@ -180,6 +181,8 @@ export interface ReplannerOptions {
   /** Schema-repair attempts within a single replan. */
   maxAttempts?: number;
   now?: () => Date;
+  /** Tools the repaired plan must bind; enforced exactly as the planner enforces it. */
+  tools?: readonly ToolCatalogEntry[];
 }
 
 /**
@@ -195,7 +198,10 @@ export async function createReplan(
   const now = options.now ?? (() => new Date());
   const attempts: ReplanAttempt[] = [];
 
-  let prompt = buildPrompt(context);
+  const catalogText = options.tools === undefined ? "" : `
+
+${renderCatalog(options.tools)}`;
+  let prompt = buildPrompt(context) + catalogText;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const response = await options.llm.generate({
@@ -224,6 +230,9 @@ export async function createReplan(
       if (validated.success) {
         candidate = validated.data;
         errors.push(...validateRevision(candidate, context));
+        if (options.tools !== undefined) {
+          errors.push(...validateToolBindings(candidate.tasks, options.tools));
+        }
       } else {
         errors.push(
           ...validated.error.issues.map((issue) => {
@@ -259,7 +268,7 @@ export async function createReplan(
       };
     }
 
-    prompt = buildRepairPrompt(context, response.text, errors);
+    prompt = buildRepairPrompt(context, response.text, errors) + catalogText;
   }
 
   throw new ReplanError(

@@ -9,8 +9,8 @@
 
 <p align="center">
   <a href="https://github.com/SvshSingh/MCP-X/actions/workflows/ci.yml"><img src="https://github.com/SvshSingh/MCP-X/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/tests-407%20passing-brightgreen" alt="407 tests passing">
-  <img src="https://img.shields.io/badge/coverage-98.7%25-brightgreen" alt="98.7% statement coverage">
+  <img src="https://img.shields.io/badge/tests-492%20passing-brightgreen" alt="492 tests passing">
+  <img src="https://img.shields.io/badge/coverage-98.9%25-brightgreen" alt="98.9% statement coverage">
   <img src="https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white" alt="Node 20+">
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript strict">
 </p>
@@ -27,7 +27,7 @@ what can run concurrently, specialist agents that each own a narrow slice of cap
 evaluator that runs the whole pipeline dozens of times and reports where it actually breaks.
 
 Every one of those claims is backed by a test. This README doesn't show you a demo GIF and ask
-you to trust it — it shows you the real `npm run execute` output and the real evaluation report,
+you to trust it — it shows you real `npm run demo` output and the real evaluation report,
 regenerated from the code in this repository.
 
 ## Architecture
@@ -37,10 +37,10 @@ User goal (natural language)
         │
         ▼
 ┌─────────────────┐
-│    PLANNER      │  Gemini → structured Plan (Zod-validated DAG of Tasks)
-│                 │  schema-error retry loop, capped at 3 attempts
-└────────┬────────┘
-         │ Plan { tasks[], dependsOn[] }
+│    PLANNER      │  Gemini → Zod-validated DAG; every task binds a real tool,
+│                 │  and each tool's data inputs must come from a direct dependency.
+└────────┬────────┘  Any defect goes back to the model as a correction (≤3 attempts).
+         │ Plan { tasks[ {tool, dependsOn} ] }
          ▼
 ┌─────────────────┐      ┌──────────────────┐
 │  ORCHESTRATOR   │◄────►│    BLACKBOARD    │  append-only event log
@@ -49,39 +49,41 @@ User goal (natural language)
          │ dispatch every ready wave concurrently (Promise.allSettled)
          ▼
 ┌─────────────────┐
-│   CLASSIFIER    │  hint → LLM → keyword fallback, in that order
+│   ROUTING       │  bound tool → its owner; otherwise hint → LLM → keyword
 └────────┬────────┘
          ▼
 ┌──────────────────────────────────────────┐
 │  SPECIALIST AGENTS                       │
-│  research · compute · publish            │  tool ownership is enforced,
-│  each owns a disjoint set of MCP tools   │  not just declared
+│  research · compute · publish            │  a specialist can only invoke
+│  each owns a disjoint set of MCP tools   │  the tools it owns
 └────────┬─────────────────────────────────┘
-         │ AgentResult { ok, output, tokensIn, tokensOut }
+         │ AgentResult { ok, output, data (structured), tokensIn, tokensOut }
+         │ data flows into dependent tasks as their input
          ▼
-   on failure: REPLANNER (bounded, ≤2 attempts, appends a revision)
+   on failure: REPLANNER (bounded, ≤2 repairs, appends a revision)
          │
          ▼
-   RunRecord → JSONL on disk → replayable with zero live calls
+   RunRecord → JSONL on disk → replayable with zero live calls → HTML report
 ```
 
-Nothing in that diagram is aspirational — every box is a module with its own test file, listed
-below with its actual coverage.
+Nothing in that diagram is aspirational — every box is a module with its own test file.
 
 ## What's real, what's stubbed
 
 | Layer | Status |
 |---|---|
-| Planner (goal → validated DAG, schema-repair loop) | **Real.** Calls Gemini, retries on invalid output, falls back to fixtures with zero network for tests and CI. |
-| Scheduler & orchestrator (parallel dispatch, retry, blocked-subtree failure) | **Real.** Runs against hand-built and planner-generated DAGs alike. |
-| Classifier (task → specialist routing) | **Real.** LLM-based with a deterministic keyword fallback; accuracy measured on a labelled set, not asserted. |
+| Planner (goal → validated, tool-bound DAG, schema-repair loop) | **Real.** Calls Gemini, retries on invalid output or mis-wired tool dependencies, falls back to recorded model output with zero network for tests, CI and the offline demo. |
+| Scheduler & orchestrator (parallel dispatch, retry, blocked-subtree failure) | **Real.** |
+| Routing (task → specialist) | **Real.** A task bound to a tool goes to that tool's owner. Unbound tasks use an LLM classifier with a deterministic keyword fallback whose accuracy is measured on a labelled set. |
+| Tool execution — supply-chain workflow | **Real.** Six MCP tools do actual work against a local warehouse dataset: order-up-to reorder quantities, compliance rules (supplier hold, HAZMAT, cold chain, approval limit), purchase orders written to a local outbox. Each tool's structured output is passed to the tasks that depend on it. |
 | Bounded adaptive replanning | **Real.** Enforces that completed work survives a repair and a failed task's id can never reappear. |
-| Durable run records + replay | **Real.** JSONL, appended live; a finished run reconstructs from disk with no LLM client constructed. |
-| Evaluation harness | **Real.** 15 golden scenarios, run 3× each, scored on completion, plan validity, capability precision/recall, step efficiency, and cross-run variance. |
-| Tool execution (`addTwoNumbers`, `createPost`) | **Stubbed in the orchestrator demo and the eval harness.** The orchestration layer is what's under test; wiring specialists to call real tools mid-run is the natural next phase. |
-| `createPost` posting to X/Twitter | Implemented against `twitter-api-v2`, but write access needs a paid API tier — untested against the live API for that reason. |
+| Durable run records, replay, HTML report | **Real.** JSONL appended live; a finished run reconstructs from disk with no LLM client constructed. |
+| MCP exposure | **Real.** Every tool is served over MCP/SSE and callable by any MCP client — covered by an end-to-end test using the official SDK client. |
+| Evaluation harness | **Real.** 15 golden scenarios, run 3× each, scored on completion, plan validity, capability precision/recall, step efficiency and cross-run variance. |
+| Side effects | **Deliberately local.** Purchase orders are files in `demo/outbox/`; nothing is emailed and no real ERP or supplier API is called. Swapping one in means implementing the same tool contract. |
+| Tool execution — the original HN/`createPost` demo and the eval harness | **Stubbed.** Those exercise planning and orchestration; `createPost` is implemented against `twitter-api-v2` but untested live because write access needs a paid API tier. |
 
-If a claim isn't in this table, assume it isn't built. The project's phase-by-phase build log —
+If a claim isn't in this table, assume it isn't built. The phase-by-phase build log —
 [`ORCHESTRATOR_PLAN.md`](ORCHESTRATOR_PLAN.md) — has the acceptance criterion and the actual
 result for every phase, including deviations from the original plan and bugs the tests caught.
 
@@ -91,38 +93,141 @@ result for every phase, including deviations from the original plan and bugs the
 git clone https://github.com/SvshSingh/MCP-X.git
 cd MCP-X
 npm install
-cp .env.example .env          # PLANNER_MODE=fixture needs no key at all
-npm test                      # 407 tests, no network, no API key
+npm run doctor      # checks the environment and dry-runs the demo end to end
+npm run demo        # the full workflow, offline: no API key, no network
 ```
 
-To see it plan and execute a goal without any credentials:
+That's it — no `.env` needed. `npm run demo` replays the model's recorded answers, runs every
+tool for real, prints the run as it happens, and opens an HTML report in your browser.
 
 ```bash
-PLANNER_MODE=fixture npm run execute -- "post a summary of today's top HN story to Twitter"
+npm run demo:fail   # a supplier portal goes down; watch the run repair itself
+npm run mcp:demo    # a real MCP client lists the tools and drives the workflow over SSE
+npm run eval        # the 15-scenario evaluation suite CI runs
 ```
 
-To run it against a real model, put a [Gemini API key](https://aistudio.google.com/apikey) in
-`.env` and drop `PLANNER_MODE`:
+To use the live model, put a [Gemini API key](https://aistudio.google.com/apikey) in `.env`
+(copy `.env.example`), then:
 
 ```bash
-npm run plan -- "check warehouse stock and notify the supplier"
+npm run demo:live -- --fail
 ```
+
+Presenting it to someone? [`DEMO.md`](DEMO.md) is a timed walkthrough with talking points,
+likely questions and fixes for anything that goes wrong on a call.
 
 ### All commands
 
+Every command works as typed in PowerShell, cmd and bash.
+
 ```bash
+npm run demo                      # supply-chain run, offline replay, opens the HTML report
+npm run demo:fail                 # same, with a supplier portal down -> replan
+npm run demo:live                 # plan against the live model (add -- --fail, -- --model <name>)
+npm run demo:record               # live run whose model answers become the offline fixtures
+npm run demo:reset                # clear demo/outbox and runs
+npm run doctor                    # pre-flight check; add -- --live to test API quota
+npm run mcp:demo                  # MCP server + real SDK client, one terminal
+npm run serve                     # MCP server over SSE on :3001, for your own client
 npm run plan -- "<goal>"          # goal -> validated task DAG
-npm run execute -- "<goal>"       # plan it, then run it, with retry and replanning
+npm run execute -- "<goal>"       # plan and run a free-form goal with stubbed agents
 npm run replay -- <runId>         # reconstruct a finished run from disk, no live calls
-npm run replay                    # list runs on disk
-npm run serve                     # MCP server over SSE, on :3001
 npm run eval                      # 15 golden scenarios x 3 runs, fixture replay (what CI runs)
-npm run eval:live                 # against the real model (quota-limited, see below)
-npm test                          # 407 tests
+npm run eval:live                 # against the real model (quota-limited)
+npm test                          # 492 tests
 npm run coverage                  # tests + coverage report
 ```
 
+`plan`, `execute` and `eval` read `PLANNER_MODE=fixture` from `.env` to run offline; in
+PowerShell a one-off override is `$env:PLANNER_MODE="fixture"; npm run execute -- "<goal>"`.
+
 ## See it work
+
+A pharmaceutical distribution centre needs restocking. The goal is one sentence; everything
+after it is the system. This is the run where a supplier's ordering portal is down, because it
+shows the most — real output from `npm run demo:fail`, with no API key and no network:
+
+```
+────────────────────────────────────────────────────────────────────────
+MCP-X  ·  multi-agent supply-chain orchestration
+────────────────────────────────────────────────────────────────────────
+Goal      Check warehouse stock levels, work out reorder quantities, make sure every order is compliant, and notify the suppliers
+Planner   recorded model output (offline replay: no API key, no network)
+Scenario  SUP-NOVA's ordering portal is DOWN
+
+1  PLAN  valid DAG on attempt 1 · 5 tasks · 4 waves
+   wave 1  check_inventory        → research
+   wave 2  lookup_suppliers       → research ┐ in parallel
+           compute_reorder_qty    → compute  ┘
+   wave 3  validate_compliance    → compute
+   wave 4  notify_supplier        → publish
+
+2  EXECUTE
+   ▶ check_inventory on research
+     ✓ 6 of 8 SKUs at or below reorder point: AMX-500, INS-GLA, ETH-70, SYR-5ML, MAB-100, ORS-21 1ms
+   ▶ lookup_suppliers on research
+   ▶ compute_reorder_qty on compute
+     ✓ Found 3 supplier record(s): SUP-ACME (active), SUP-NOVA (active), SUP-ORBIT (on_hold) 30ms
+     ✓ 6 order line(s), $17,376.00 total: AMX-500 x800, INS-GLA x100, ETH-70 x60, SYR-5ML x2000, MAB-100 x30, ORS-21 x200 30ms
+   ▶ validate_compliance on compute
+     ✓ 3 line(s) approved ($2,664.00), 3 breach(es): ETH-70 hazmat_certification, SYR-5ML supplier_on_hold, MAB-100 approval_threshold 1ms
+   ▶ notify_supplier on publish
+     ✗ Supplier portal unreachable for SUP-NOVA; no purchase orders were sent 0ms
+     ↻ retrying
+   ▶ notify_supplier on publish · attempt 2
+     ✗ Supplier portal unreachable for SUP-NOVA; no purchase orders were sent 0ms
+
+   ⟲ REPLAN  revision 0 → 1
+     Direct supplier portal notification failed due to connection issues with SUP-NOVA, so purchase orders are now queued for manual buyer review.
+     new route: check_inventory → lookup_suppliers → compute_reorder_qty → validate_compliance → queue_manual_review
+     completed tasks are kept and not re-run
+
+   ▶ queue_manual_review on publish
+     ✓ Queued 3 line(s) and 3 breach(es) for manual review 3ms
+
+3  RESULT
+   Reorder lines
+   AMX-500       800 units      $144.00  SUP-NOVA   approved
+   INS-GLA       100 units    $2,450.00  SUP-ACME   approved
+   ETH-70         60 units      $192.00  SUP-NOVA   held: hazmat certification
+   SYR-5ML      2000 units      $120.00  SUP-ORBIT  held: supplier on hold
+   MAB-100        30 units   $14,400.00  SUP-ACME   held: approval threshold
+   ORS-21        200 units       $70.00  SUP-NOVA   approved
+
+   Queued for manual review demo\outbox\run-mtz0mxdv\manual-review.md
+
+────────────────────────────────────────────────────────────────────────
+SUCCEEDED  run-mtz0mxdv · 0.08s · 17 events · 2 plan revision(s) · 2589 tokens
+   Report   runs\run-mtz0mxdv.html
+   Outbox   demo\outbox\run-mtz0mxdv
+   Replay   npm run replay -- run-mtz0mxdv
+────────────────────────────────────────────────────────────────────────
+```
+
+What to notice:
+
+- **The model chose the tools and the order; the runtime checked it.** Every task names a real
+  tool. `compute_reorder_qty` consumes inventory data, so the plan is rejected and repaired
+  unless that task depends directly on `check_inventory` — caught before anything runs.
+- **Wave 2 is genuinely concurrent.** Both tasks start before either finishes.
+- **The numbers are computed, not narrated.** Order-up-to quantities from demand, lead time,
+  review period and safety stock, rounded up to case packs; three lines held back by rules a
+  pharmaceutical distributor actually has.
+- **The send is all-or-nothing, and the repair keeps finished work.** Nothing was half-sent, and
+  only the new `queue_manual_review` task ran after the replan.
+- **Routing is by tool ownership.** Only `publish` owns the tools that write anything; a compute
+  task physically cannot reach them.
+
+`npm run demo` (without `:fail`) runs the same plan to completion and writes two purchase orders.
+Both commands open a self-contained HTML report of the run: the plan as waves, every revision,
+each order line's compliance decision, and the full event log.
+
+The offline answers are not hand-written. `npm run demo:record` ran the live model, and a
+recording client saved exactly what it said; the demo replays it while everything else —
+scheduling, routing, tools, compliance, files, replanning — runs for real.
+
+<details>
+<summary>The original free-form demo: <code>npm run execute</code> with stubbed agents</summary>
 
 A goal that decomposes into a parallel branch, executed against recorded fixtures (no API
 key, no network — this is exactly what `npm test` and CI exercise):
@@ -195,6 +300,8 @@ $ FAIL_TASK=fetch_story_content PLANNER_MODE=fixture \
 `fetch_top_story` and `fetch_story_comments` were **not** re-executed after the repair — their
 results carried forward from the first revision. That's not incidental: it's an invariant the
 replanner enforces on every proposed revision (see [Design notes](#design-notes)).
+
+</details>
 
 ## Evaluation harness
 
@@ -346,31 +453,51 @@ would rest on nothing.
 empty on purpose. A plausible-looking number baked into source for a model whose real price
 wasn't checked is worse than an honest gap, because the fake number gets trusted.
 
+**A plan binds tools, and its data wiring is checked before anything runs.** Each tool declares
+the kind of data it produces and consumes. A task whose tool consumes `inventory` must depend
+*directly* on a task whose tool produces it — directly, because the runtime hands a tool only its
+direct dependencies' output, so a producer two hops away would pass a looser check and still
+leave the tool empty-handed at run time. A mis-wired plan goes back to the model as a specific
+correction, through the same loop that repairs cycles.
+
+**Once a plan exists, execution is deterministic.** The model decides what to do; the runtime
+invokes each tool with its dependencies' structured output. That split is what lets a run be
+replayed exactly, and what lets the demo run offline from recorded model output with every other
+part of the system executing for real.
+
+**Publishing is all-or-nothing.** `notify_supplier` checks every supplier's portal before sending
+any order. A half-sent batch is the one outcome a replan cannot cleanly repair.
+
 ## Project layout
 
 ```
 MCP-X/
-├── src/
-│   ├── kernel/
-│   │   ├── schemas.ts        # Zod contracts: Task, Plan, AgentResult, Event, RunRecord
-│   │   ├── planner.ts        # goal -> validated Plan, schema-repair retry loop
-│   │   ├── json.ts           # recovers JSON from imperfect model output
-│   │   ├── scheduler.ts      # topological readiness, parallel wave dispatch
-│   │   ├── orchestrator.ts   # the execution loop: retry, blocked-subtree failure, replanning
-│   │   ├── blackboard.ts     # append-only event log + derived state
-│   │   ├── classifier.ts     # task -> specialist routing (hint -> LLM -> keyword)
-│   │   └── replanner.ts      # bounded adaptive replanning
-│   ├── agents/
-│   │   └── registry.ts       # specialist definitions + enforced tool ownership
-│   ├── mcp/                  # MCP server over SSE + the tool registry
-│   ├── llm/                  # LlmClient interface: Gemini backend + deterministic fixtures
-│   ├── observability/        # JSONL run persistence + token/cost accounting
-│   └── cli/                  # plan / execute / replay entry points
-├── eval/                     # golden scenarios, scoring, markdown report generator
-├── fixtures/                 # recorded model completions (planner demos + eval golden set)
-├── tests/                    # Vitest, mirrors src/ 1:1
-├── docs/ARCHITECTURE.md      # module-by-module design rationale
-└── ORCHESTRATOR_PLAN.md      # the phase-by-phase build log: criteria, results, deviations
+|-- src/
+|   |-- kernel/
+|   |   |-- schemas.ts        # Zod contracts: Task (incl. bound tool), Plan, AgentResult, Event, RunRecord
+|   |   |-- planner.ts        # goal -> validated Plan, schema + tool-wiring repair loop
+|   |   |-- tool-catalog.ts   # tool catalog shown to the planner; plan-time data-wiring check
+|   |   |-- tool-runner.ts    # executes bound tools via their owning specialist; ownership routing
+|   |   |-- scheduler.ts      # topological readiness, parallel wave dispatch
+|   |   |-- orchestrator.ts   # the execution loop: retry, blocked-subtree failure, replanning
+|   |   |-- blackboard.ts     # append-only event log + derived state
+|   |   |-- classifier.ts     # routing for unbound tasks (hint -> LLM -> keyword)
+|   |   |-- replanner.ts      # bounded adaptive replanning
+|   |   `-- json.ts           # recovers JSON from imperfect model output
+|   |-- domain/supply-chain/  # warehouse dataset model, reorder + compliance logic, the six tools
+|   |-- demo/                 # the end-to-end supply-chain run the CLI and tests both drive
+|   |-- agents/registry.ts    # specialist definitions + enforced tool ownership
+|   |-- mcp/                  # MCP server over SSE + the tool registry
+|   |-- llm/                  # LlmClient: Gemini, deterministic fixtures, recording client
+|   |-- observability/        # JSONL runs, cost accounting, run-id logging, HTML run report
+|   `-- cli/                  # demo, doctor, mcp:demo, plan, execute, replay
+|-- demo/warehouse.json       # the toy distribution centre the tools operate on
+|-- eval/                     # golden scenarios, scoring, markdown report generator
+|-- fixtures/                 # recorded model output: demo, eval golden set, planner examples
+|-- tests/                    # Vitest, mirrors src/
+|-- DEMO.md                   # screen-share runbook
+|-- docs/ARCHITECTURE.md      # module-by-module design rationale
+`-- ORCHESTRATOR_PLAN.md      # the phase-by-phase build log: criteria, results, deviations
 ```
 
 ## Testing & CI
@@ -378,13 +505,13 @@ MCP-X/
 ```bash
 npm run typecheck   # tsc --noEmit, strict mode
 npm run lint        # ESLint 9, typescript-eslint
-npm test            # 407 tests, zero network calls, zero API keys required
+npm test            # 492 tests, zero network calls, zero API keys required
 npm run coverage    # v8 coverage; core modules held to an 85% floor that fails the build
 npm run eval        # 15 golden scenarios; fails the build below a 93% pass-rate floor
 ```
 
 All five run on every push and pull request. Both gates **fail the build**, not just report it:
-coverage is currently at 98.7% statements / 93.0% branches against an 85% floor (headroom, not
+coverage is currently at 98.9% statements / 91.4% branches against an 85% floor (headroom, not
 the target); the eval pass rate is pinned exactly to today's honest 93% result, so it catches a
 future regression without demanding a perfection this project doesn't currently have.
 
@@ -402,11 +529,12 @@ Vitest for testing, GitHub Actions for CI.
 
 Tracked in detail in [`ORCHESTRATOR_PLAN.md`](ORCHESTRATOR_PLAN.md):
 
-- Resolve the one remaining routing tie by letting the LLM classifier handle the eval suite,
-  rather than adding a third keyword heuristic after two were disproved.
-- Wire specialist agents to real tool execution end-to-end, rather than the current stubbed
-  runner used to isolate orchestration from tool-call variance during evaluation.
-- The optional domain reskin: swap the demo tools for a supply-chain-flavoured toy workflow.
+- Put a real integration behind the existing tool contract -- a supplier API or an ERP read --
+  in place of the local dataset and outbox.
+- Resolve the one remaining evaluation failure by letting the LLM classifier route the eval
+  suite, rather than adding a third keyword heuristic after two were disproved.
+- Add tool-bound scenarios to the evaluation suite, so planning quality *with* the tool catalog
+  is measured across repeated live runs, not only demonstrated.
 
 ## Origin
 

@@ -13,6 +13,8 @@ export default defineConfig({
         "src/kernel/**/*.ts",
         "src/llm/**/*.ts",
         "src/agents/**/*.ts",
+        "src/domain/**/*.ts",
+        "src/demo/**/*.ts",
         "src/observability/**/*.ts",
         "src/mcp/tools.ts",
         "eval/metrics.ts",

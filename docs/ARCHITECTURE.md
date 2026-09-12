@@ -61,6 +61,13 @@ User goal (natural language)
 | `eval/runner.ts` | executes every scenario N times, gates on a pass-rate floor | 7/8 | **built** |
 | `eval/report.ts` | renders the markdown report | 7 | **built** |
 | `src/observability/log.ts` | structured, run-id-tagged logging | 8 | **built** |
+| `src/kernel/tool-catalog.ts` | tool catalog for the planner; plan-time data-wiring check | 9 | **built** |
+| `src/kernel/tool-runner.ts` | executes bound tools through their owning specialist | 9 | **built** |
+| `src/domain/supply-chain/` | warehouse model, reorder and compliance logic, six MCP tools | 9 | **built** |
+| `src/demo/supply-chain.ts` | the end-to-end run shared by the demo CLI and its e2e test | 9 | **built** |
+| `src/observability/html-report.ts` | self-contained HTML report of a run | 9 | **built** |
+| `src/llm/recording.ts` | captures live model exchanges as replay fixtures | 9 | **built** |
+| `src/cli/demo.ts`, `doctor.ts`, `mcp-demo.ts` | demo, pre-flight check, MCP client demo | 9 | **built** |
 
 `client/` and `server/` still hold the original plain-JS demo, kept as a
 reference against the port. `src/llm/` and `src/mcp/` supersede them.
@@ -68,6 +75,10 @@ reference against the port. `src/llm/` and `src/mcp/` supersede them.
 ## Running it
 
 ```bash
+npm run demo                      # supply-chain run with real tools, offline
+npm run demo:fail                 # same, with a supplier portal down -> replan
+npm run doctor                    # pre-flight check before presenting
+npm run mcp:demo                  # drive the tools through a real MCP client
 npm run plan -- "<goal>"          # goal -> validated task DAG (needs GEMINI_API_KEY)
 npm run execute -- "<goal>"       # plan, then run it with stubbed agents
 npm run serve                     # MCP server on :3001
@@ -235,6 +246,29 @@ else can print.** `npm run execute`'s output was previously anonymous prose;
 two runs' output interleaved in one terminal has nothing to `grep` on. The tag
 is applied even to a failure before a plan exists, so no line an invocation
 produces goes unattributed.
+
+**Plans bind tools; routing follows ownership.** When a plan task names a tool, it is routed to
+the specialist that owns that tool, and ownership overrides any agent hint, because the owner is
+the only specialist that *can* run it. Keyword and LLM classification remain for unbound tasks.
+This is why the supply-chain demo cannot hit the bag-of-words tie recorded in Phase 4.
+
+**Data wiring is validated at planning time, against direct dependencies.** Tools declare the
+kind of structured output they produce and consume. The runtime passes each tool only its
+direct dependencies' `data`, so the plan-time check requires a *direct* producer too — a
+transitive one would satisfy a looser rule and still leave the tool without input. Violations
+return to the model as corrections through the planner's existing repair loop.
+
+**The model plans; the runtime executes.** Once a plan is accepted, tool invocation is
+deterministic. That is what makes a run replayable, and what lets the offline demo substitute
+recorded model output while every other component runs for real.
+
+**Offline fixtures are captured, not composed.** `RecordingLlmClient` wraps the live client and
+saves each exchange; `npm run demo:record` writes them as fixtures. A replan fixture keys on the
+failed task id, so it cannot be mistaken for the planner's answer to the same goal.
+
+**Side effects are all-or-nothing.** A publishing tool verifies it can complete every send before
+performing any, so a failure never leaves a partially-sent batch for the replanner to reason
+about.
 
 **Plan revisions are append-only.** A replan appends a revision rather than
 mutating the last one, so the run record shows what changed and why.
